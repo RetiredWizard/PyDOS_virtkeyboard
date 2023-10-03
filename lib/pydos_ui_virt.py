@@ -157,7 +157,7 @@ class PyDOS_UI:
     def read_virtKeyboard(self,num=0):
         #self._display.show(None)
         #self._display.refresh()
-        self._display.show(self._kbd_group)
+        self._display.root_group=self._kbd_group
 
         font = terminalio.FONT
         color = 0xFFFFFF
@@ -219,7 +219,7 @@ class PyDOS_UI:
 #        display.root_group = displayio.CIRCUITPYTHON_TERMINAL
         while len(self._kbd_group) > 1:
             self._kbd_group.pop()
-        self._display.show(None)
+        self._display.root_group=None
         return keyString
 
 Pydos_ui = PyDOS_UI()
