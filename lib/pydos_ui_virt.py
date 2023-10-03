@@ -216,10 +216,9 @@ class PyDOS_UI:
 
             time.sleep(0.0001)
 
-#        display.root_group = displayio.CIRCUITPYTHON_TERMINAL
         while len(self._kbd_group) > 1:
             self._kbd_group.pop()
-        self._display.root_group=None
+        self._display.root_group = displayio.CIRCUITPYTHON_TERMINAL
         return keyString
 
 Pydos_ui = PyDOS_UI()
