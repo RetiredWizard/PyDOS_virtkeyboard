@@ -2,6 +2,8 @@
 
 **The modules needed to add virtual keyboard support to PyDOS**
 
+**Check out the demo video at https://youtu.be/AVLaLuzFrxY**
+
 Currently this requires:
   - CircuitPython 9.x (pre-alpha)
   - an 800x480 "dot clock"/"666" display
