@@ -1,4 +1,4 @@
-## PyDOS-virtkeyboard - PyDOS running on a tablet?
+## PyDOS_virtkeyboard - PyDOS running on a tablet?
 
 **The modules needed to add virtual keyboard support to PyDOS**
 
