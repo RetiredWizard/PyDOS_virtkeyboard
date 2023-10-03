@@ -11,10 +11,7 @@ import adafruit_focaltouch
 import time
 
 from sys import stdin,stdout,implementation
-if implementation.name.upper() == "MICROPYTHON":
-    import uselect
-elif implementation.name.upper() == "CIRCUITPYTHON":
-    from supervisor import runtime
+from supervisor import runtime
 
 class PyDOS_UI:
     
@@ -51,37 +48,15 @@ class PyDOS_UI:
             retval = 1
             self._touched = True
         else:        
-            if implementation.name.upper() == "CIRCUITPYTHON":
-                # Does the same function as supervisor.runtime.serial_bytes_available
-                retval = runtime.serial_bytes_available
-
-            elif implementation.name.upper() == "MICROPYTHON":
-                spoll = uselect.poll()
-                spoll.register(stdin,uselect.POLLIN)
-
-                retval = spoll.poll(0)
-                spoll.unregister(stdin)
-
-                if not retval:
-                    retval = 0
+            # Does the same function as supervisor.runtime.serial_bytes_available
+            retval = runtime.serial_bytes_available
 
         return retval
 
 
     def uart_bytes_available(self):
-        if implementation.name.upper() == "CIRCUITPYTHON":
-            # Does the same function as supervisor.runtime.serial_bytes_available
-            retval = runtime.serial_bytes_available
-
-        elif implementation.name.upper() == "MICROPYTHON":
-            spoll = uselect.poll()
-            spoll.register(stdin,uselect.POLLIN)
-
-            retval = spoll.poll(0)
-            spoll.unregister(stdin)
-
-            if not retval:
-                retval = 0
+        # Does the same function as supervisor.runtime.serial_bytes_available
+        retval = runtime.serial_bytes_available
 
         return retval
 
