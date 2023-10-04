@@ -54,27 +54,21 @@ while Pydos_ui.virt_touched():
 input('Press "Enter" to continue, press "q" to quit')
 
 odgcc = gifio.OnDiskGif(fname)
-#odgp = gifio.OnDiskGif('homer-64x64.gif')
 
 start = time.monotonic()
 next_delay = odgcc.next_frame() # Load the first frame
-#odgp.next_frame()
 end = time.monotonic()
 overhead = end - start
 
 facecc = displayio.TileGrid(odgcc.bitmap, \
     pixel_shader=displayio.ColorConverter(input_colorspace=displayio.Colorspace.RGB565_SWAPPED))
-#facep = displayio.TileGrid(odgp.bitmap, pixel_shader=odgp.palette)
-#facep.x = 64
 
 splash.append(facecc)
-#splash.append(facep)
 
-try:
-    board.DISPLAY.root_group = splash
-except:
-    #display.root_group = splash
-    display.show(splash)
+#try:
+#    board.DISPLAY.root_group = splash
+#except:
+display.root_group = splash
 
 cmnd = ""
 # Display repeatedly.
@@ -85,7 +79,7 @@ while cmnd.upper() != "Q":
         print(cmnd, end="", sep="")
         if cmnd in "qQ":
             break
-    display.show(splash)
+    display.root_group=splash
     #time.sleep(max(0, next_delay - overhead))
     time.sleep(0.3)
     next_delay = odgcc.next_frame()
@@ -95,5 +89,4 @@ splash.pop()
 try:
     board.DISPLAY.root_group = displayio.CIRCUITPYTHON_TERMINAL
 except:
-    #display.root_group = displayio.CIRCUITPYTHON_TERMINAL
-    display.show(None)
+    display.root_group = displayio.CIRCUITPYTHON_TERMINAL

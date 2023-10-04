@@ -18,3 +18,4 @@ the setup.bat file has been run perform the following steps:
 
 1) On the microcontroller rename /lib/pydos_ui.py to /lib/pydos_ui_uart.py
 2) copy the contents of this repository to the microcontroller
+3) On the microcontroller rename /lib/pydos_ui_virt.py to /lib/pydos_ui.py

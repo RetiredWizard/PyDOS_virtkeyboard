@@ -34,3 +34,4 @@ for x in range(benzsize):
     turtle.forward(x)
     turtle.left(59)
 input("Press Enter to continue...")
+display.root_group = displayio.CIRCUITPYTHON_TERMINAL
