@@ -1,8 +1,9 @@
 ## PyDOS_virtkeyboard - PyDOS running on a tablet?
 
-**The modules needed to add virtual keyboard support to PyDOS**
+**The modules needed to add virtual keyboard support to [PyDOS](https://github.com/RetiredWizard/PyDOS)**
 
-**Check out the demo video at https://youtu.be/AVLaLuzFrxY**
+**Check out the demo video at https://youtu.be/AVLaLuzFrxY**  
+**The PyDOS repository: https://github.com/RetiredWizard/PyDOS**
 
 Currently this requires:
   - CircuitPython 9.x (pre-alpha)
