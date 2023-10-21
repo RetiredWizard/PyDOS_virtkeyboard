@@ -45,6 +45,7 @@ except ImportError:
 
 
 _GT_DEFAULT_I2C_ADDR = 0x5D
+_GT_SECONDARY_I2C_ADDR = 0x14
 
 _GT_COMMAND = const(0x8040)
 
@@ -73,7 +74,7 @@ class GT911_Touch:
     A driver for the GT911 capacitive touch sensor.
     """
 
-    def __init__(self, i2c, res_pin, address=_GT_DEFAULT_I2C_ADDR, debug=False, irq_pin=None):
+    def __init__(self, i2c, res_pin, i2c_address=None, debug=False, irq_pin=None):
 
         self._debug = debug
         self._irq_pin = irq_pin
@@ -81,15 +82,31 @@ class GT911_Touch:
         if type(res_pin) != digitalio.DigitalInOut:
             raise RuntimeError("res_pin must be of type digitalio.DigitalInOut")
 
+        if i2c_address is not None:
+            address = i2c_address
+        else:
+            address = _GT_DEFAULT_I2C_ADDR
+
         self._reset(address,res_pin,irq_pin)
         try:
             self._i2c = I2CDevice(i2c, address)
         except:
             if debug:
                 print("Second reset attempt")
-            self._reset(address,res_pin,irq_pin)
-            self._i2c = I2CDevice(i2c, address)
+            if i2c_address is None:
+                address = _GT_SECONDARY_I2C_ADDR
+                try:
+                    self._i2c = I2CDevice(i2c,address)
+                except:
+                    self._reset(address,res_pin,irq_pin)
+                    self._i2c = I2CDevice(i2c, address)
+            else:
+                self._reset(address,res_pin,irq_pin)
+                self._i2c = I2CDevice(i2c, address)
 
+        if debug:
+            print("I2C Address:",address)
+            
         self._last_touch = self._read_last_touch()
 
         chip_id = chr(self._read(_GT_REG_PRODID_1,1)[0])
@@ -169,7 +186,7 @@ class GT911_Touch:
         return touchpoints
     
     def _reset(self, address, res_pin, irq_pin=None) -> None:
-        """ Initialize board """
+        """ Initialize board - This sometimes fails, Ctrl-D reset to recover """
         time.sleep(.0001)
         res_pin.direction = digitalio.Direction.OUTPUT
         res_pin.value = True
