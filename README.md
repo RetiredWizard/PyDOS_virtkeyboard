@@ -13,7 +13,7 @@ Currently this requires:
 
 This has only been tested using the [HackTablet](https://hackaday.io/project/185831-hacktablet-crestron-tss-752-teardown-rebuild) and the [MaTouch ESP32-S3 7"](https://www.makerfabs.com/index.php?route=product/product&product_id=774)
 
-The **lib/pydos_ui_virt.py** file performs the keyboard abstraction for PyDOS. 
+The [**lib/pydos_ui_virt.py**](https://github.com/RetiredWizard/PyDOS_virtkeyboard/blob/main/lib/pydos_ui_virt.py) file performs the keyboard abstraction for PyDOS. 
 
 To setup the virtual keyboard in PyDOS follow the standard PyDOS installation instructions and after
 the setup.bat file has been run perform the following steps:
