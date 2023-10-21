@@ -186,7 +186,23 @@ class GT911_Touch:
         return touchpoints
     
     def _reset(self, address, res_pin, irq_pin=None) -> None:
-        """ Initialize board - This sometimes fails, Ctrl-D reset to recover """
+        """ 
+        Initialize board to use default I2C address of 0x5D
+        
+        Some of the time, this function currently selects the
+        secondary I2C address (0x14). A ctrl-D reset immediatly 
+        after the incorrect reset results in the correct I2C address
+        being selected.
+
+        Alternatley the calling code can switch to the secondary
+        address if a device is not found on the primary address
+
+        try:
+            self._i2c = I2CDevice(i2c, 0x5D)
+        except:
+            self._i2c = I2CDevice(i2c, 0x14)
+        """
+
         time.sleep(.0001)
         res_pin.direction = digitalio.Direction.OUTPUT
         res_pin.value = True
