@@ -6,7 +6,7 @@
 **The PyDOS repository: https://github.com/RetiredWizard/PyDOS**
 
 Currently this requires:
-  - CircuitPython 9.x (pre-alpha)
+  - CircuitPython 9.x (pre-alpha) - See [releases](https://github.com/RetiredWizard/PyDOS_virtkeyboard/releases) for firmware download
   - a "dot clock"/"666" display
   - FocalTech capacitive touch chips (Currently supports FT6206 & FT6236)
   - GOODIX GT911 touch interface
