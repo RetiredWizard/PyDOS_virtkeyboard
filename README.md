@@ -7,10 +7,11 @@
 
 Currently this requires:
   - CircuitPython 9.x (pre-alpha)
-  - an 800x480 "dot clock"/"666" display
+  - a "dot clock"/"666" display
   - FocalTech capacitive touch chips (Currently supports FT6206 & FT6236)
+  - GOODIX GT911 touch interface
 
-This has only been tested using the [HackTablet](https://hackaday.io/project/185831-hacktablet-crestron-tss-752-teardown-rebuild)
+This has only been tested using the [HackTablet](https://hackaday.io/project/185831-hacktablet-crestron-tss-752-teardown-rebuild) and the [MaTouch ESP32-S3 7"](https://www.makerfabs.com/index.php?route=product/product&product_id=774)
 
 The **lib/pydos_ui_virt.py** file performs the keyboard abstraction for PyDOS. 
 

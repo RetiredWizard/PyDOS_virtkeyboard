@@ -11,7 +11,7 @@ import displayio
 
 displayio.release_displays()
 
-fb=dotclockframebuffer.DotClockFramebuffer(**board.TFT,**board.TIMINGS800)
+fb=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
 display = framebufferio.FramebufferDisplay(fb)
 
 
