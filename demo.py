@@ -33,7 +33,7 @@
 import time
 import busio
 import board
-import adafruit_focaltouch
+#import adafruit_focaltouch
 import displayio
 import dotclockframebuffer
 import framebufferio
@@ -53,7 +53,7 @@ from pydos_ui import Pydos_ui
 
 
 #ft = adafruit_focaltouch.Adafruit_FocalTouch(i2c, debug=False)
-ft = Pydos_ui.ft
+ft = Pydos_ui.ts
 
 displayio.release_displays()
 
@@ -96,7 +96,7 @@ print('Creating DotClockFrameBuffer.')
 #    bounce_buffer_size_px = 1000 * 15, # 15000
 #    )
 
-fb=dotclockframebuffer.DotClockFramebuffer(**board.TFT,**board.TIMINGS800)
+fb=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
 
 
 print('Creating DotClockFrameBuffer Display.')
@@ -113,8 +113,8 @@ display.refresh()
 
 box_size=50
 corner_box_size=20
-width=800
-height=480
+width=display.width
+height=display.height
 
 color_count=0 
 

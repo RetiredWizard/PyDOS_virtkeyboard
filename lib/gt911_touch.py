@@ -49,7 +49,6 @@ _GT_SECONDARY_I2C_ADDR = 0x14
 
 _GT_COMMAND = const(0x8040)
 
-
 _GT_REG_STATUS = const(0x814E)
 _GT_POINT1_COORD = const(0x814F)
 _GT_REG_PRODID_1 = const(0x8140)
@@ -138,9 +137,11 @@ class GT911_Touch:
         curr_touch = self._read_last_touch()
         if self._last_touch != curr_touch:
             self._last_touch = curr_touch
-            """ If this extra call to _read_last_touch() 
+            """ 
+            If this extra call to _read_last_touch() 
             isn't made then the next touch is missed ?????
-            I have no idea why """
+            I have no idea why 
+            """
             self._read_last_touch()
             return 1
         else:
@@ -149,7 +150,7 @@ class GT911_Touch:
     def _read_last_touch(self):
         self._write(_GT_REG_STATUS,[0])
         test = self._read(_GT_REG_STATUS,1)[0]
-        timeout = 1000
+        timeout = 250
         while not (test & 0x80) and (timeout := timeout-1) > 0:
             if test == 0:
                 break
@@ -235,7 +236,7 @@ class GT911_Touch:
 
             i2c.write(bytes([((register & 0xFF00) >> 8),(register & 0xFF)]))
             result = bytearray(length)
-            time.sleep(.1)
+            time.sleep(.06)
 
             i2c.readinto(result)
             if self._debug:

@@ -1,4 +1,5 @@
 from sys import stdin,stdout,implementation
+from os import getenv
 
 import board
 import displayio
@@ -83,22 +84,29 @@ class PyDOS_UI:
 
         self._touched = False
 
-        self._row1Keys = [665,615,565,515,465,415,365,315,265,215,165,115,68,0]
+        self._row1Keys = [665,615,565,515,465,415,365,315,265,215,165,115,68,-99999]
         self._row1Letters = ['\x08','=','-','0','9','8','7','6','5','4','3','2','1','`']
         self._row1Uppers = ['\x08','+','_',')','(','*','&','^','%','$','#','@','!','~']
-        self._row2Keys = [695,645,595,545,495,445,395,345,295,245,195,145,95,0]
+        self._row2Keys = [695,645,595,545,495,445,395,345,295,245,195,145,95,-99999]
         self._row2Letters = ['\\',']','[','p','o','i','u','y','t','r','e','w','q','\x09']
         self._row2Uppers = ['|','}','{']
-        self._row3Keys = [650,600,550,500,450,400,350,300,250,200,150,100,0]
+        self._row3Keys = [650,600,550,500,450,400,350,300,250,200,150,100,-99999]
         self._row3Letters = ['\n',"'",';','l','k','j','h','g','f','d','s',"a",'C']
         self._row3Uppers = ['\n','"',':']
-        self._row4Keys = [635,585,535,485,435,385,335,285,235,185,135,0]
+        self._row4Keys = [635,585,535,485,435,385,335,285,235,185,135,-99999]
         self._row4Letters = ['S','/','.',',','m','n','b','v','c','x','z','S']
         self._row4Uppers = ['S','?','>','<']
-        self._row5Keys = [710,520,220,125,0]
+        self._row5Keys = [710,520,220,125,-99999]
         self._row5Letters = ['X','',' ','','\x1b']
 
-        ts_calib = self.calibrate()
+        ts_calib = getenv('PYDOS_TS_CALIB')
+        try:
+            ts_calib = eval(ts_calib)
+            self._calibrated = True
+        except:
+            ts_calib = self.calibrate()
+        if len(ts_calib) != 4:
+            ts_calib = self.calibrate()
         self._calibXfact = self._display.width/(ts_calib[2]-ts_calib[0]+1)
         self._calibXadj = ts_calib[0]
         self._calibYfact = self._display.height/(ts_calib[3]-ts_calib[1]+1)
@@ -180,6 +188,27 @@ class PyDOS_UI:
 
         largest_X += 5
         largest_Y += 5
+
+        envline = {}
+        defaults = True
+        try:
+            envfile = open('/settings.toml')
+        except:
+            defaults = False
+
+        if defaults:
+            for line in envfile:
+                try:
+                    envline[line.split('=')[0].strip()] = line.split('=')[1].strip()
+                except:
+                    pass
+            envfile.close()
+
+        with open('/settings.toml','w') as envfile:
+            for param in envline:
+                if param != 'PYDOS_TS_CALIB':
+                    envfile.write(param+"="+envline.get(param,"")+"\n")
+            envfile.write('PYDOS_TS_CALIB="(%s,%s,%s,%s)"'%(smallest_X,smallest_Y,largest_X,largest_Y))
 
         self._display.root_group=displayio.CIRCUITPYTHON_TERMINAL
         self._calibrated = True
