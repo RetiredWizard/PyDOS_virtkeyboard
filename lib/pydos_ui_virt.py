@@ -39,14 +39,14 @@ class PyDOS_UI:
         #else:
         #    IRQ_PIN = None
 
-        self._calibrated = False
         self.i2c = busio.I2C(SCL_pin, SDA_pin)
         if RES_pin is not None:
             self.ts = Touch_Screen(self.i2c, RES_pin, debug=False)
         else:
             self.ts = Touch_Screen(self.i2c, debug=False)
         self.touches = []
-        
+        self._touched = False
+
         self.SHIFTED = False
         self.CAPLOCK = False
 
@@ -55,10 +55,28 @@ class PyDOS_UI:
         fb=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
         self._display=framebufferio.FramebufferDisplay(fb)
 
-        self._kbd_row = self._display.height - 260
-        keyboard_bitmap,keyboard_palette = adafruit_imageload.load("/lib/keyboard.bmp",bitmap=displayio.Bitmap,palette=displayio.Palette)
+        ts_calib = getenv('PYDOS_TS_CALIB')
+        try:
+            ts_calib = eval(ts_calib)
+        except:
+            ts_calib = self.calibrate()
+        if len(ts_calib) != 4:
+            ts_calib = self.calibrate()
+        self._calibXfact = (ts_calib[2]-ts_calib[0]+1)/1024
+        self._calibXadj = ts_calib[0] - 1
+        self._calibYfact = (ts_calib[3]-ts_calib[1]+1)/600
+        self._calibYadj = ts_calib[1] - 1
+        self._calibKBfact = (ts_calib[3]-ts_calib[1]+1)/self._display.height
+        self._calibKBadj = ts_calib[1] - 1
+        scrCalibX = self._display.width/1024
+        scrCalibY = self._display.height/600
+
+        self._kbd_row = self._display.height - round(scrCalibY*330)
+        keyboard_bitmap,keyboard_palette = adafruit_imageload.load \
+            ("/lib/keyboard"+str(self._display.width)+".bmp", \
+            bitmap=displayio.Bitmap,palette=displayio.Palette)
         htile=displayio.TileGrid(keyboard_bitmap,pixel_shader=keyboard_palette)
-        htile.x=15
+        htile.x=round(scrCalibX*20)
         htile.y=self._kbd_row
         self._kbd_group = displayio.Group()
         self._kbd_group.append(htile)
@@ -66,51 +84,55 @@ class PyDOS_UI:
         font = terminalio.FONT
         color = 0xFFFFFF
         self._keyedTxt = label.Label(font, text="", color=color)
-        self._keyedTxt.x = 15
-        self._keyedTxt.y = self._display.height - 280
+        self._keyedTxt.x = round(scrCalibX*20)
+        self._keyedTxt.y = self._display.height - round(scrCalibY*355)
         self._keyedTxt.scale = 2
         self._kbd_group.append(self._keyedTxt)
         
         self._shftIndicator = label.Label(font,text="",color=0x00FF00)
-        self._shftIndicator.x = 15
-        self._shftIndicator.y = 15
+        self._shftIndicator.x = round(scrCalibX*20)
+        self._shftIndicator.y = round(scrCalibY*20)
         self._shftIndicator.scale = 2
         self._kbd_group.append(self._shftIndicator)
         self._capsIndicator = label.Label(font,text="",color=0x00FF00)
-        self._capsIndicator.x = 90
-        self._capsIndicator.y = 15
+        self._capsIndicator.x = round(scrCalibX*105)
+        self._capsIndicator.y = round(scrCalibY*20)
         self._capsIndicator.scale = 2
         self._kbd_group.append(self._capsIndicator)
 
-        self._touched = False
-
-        self._row1Keys = [665,615,565,515,465,415,365,315,265,215,165,115,68,-99999]
+        #self._row1Keys = [665,615,565,515,465,415,365,315,265,215,165,115,68,-99999]
+        #self._row1Keys = [600,555,510,465,420,375,330,285,240,195,150,105,60,0,-99999]
+        self._row1Keys = [843,780,718,655,593,530,467,404,342,279,216,154,92,0,-99999]
+        self._row1Keys = [self._calibX(x) for x in self._row1Keys]
         self._row1Letters = ['\x08','=','-','0','9','8','7','6','5','4','3','2','1','`']
         self._row1Uppers = ['\x08','+','_',')','(','*','&','^','%','$','#','@','!','~']
-        self._row2Keys = [695,645,595,545,495,445,395,345,295,245,195,145,95,-99999]
+        #self._row2Keys = [695,645,595,545,495,445,395,345,295,245,195,145,95,-99999]
+        #self._row2Keys = [615,570,525,485,440,395,350,305,260,215,175,130,80,-99999]
+        self._row2Keys = [880,818,755,692,629,567,504,441,378,316,253,190,127,-99999]
+        self._row2Keys = [self._calibX(x) for x in self._row2Keys]
         self._row2Letters = ['\\',']','[','p','o','i','u','y','t','r','e','w','q','\x09']
         self._row2Uppers = ['|','}','{']
-        self._row3Keys = [650,600,550,500,450,400,350,300,250,200,150,100,-99999]
+        #self._row3Keys = [650,600,550,500,450,400,350,300,250,200,150,100,-99999]
+        #self._row3Keys = [590,545,500,455,410,365,320,275,230,185,140,95,-99999]
+        self._row3Keys = [825,763,700,637,574,511,448,385,323,260,197,134,-99999]
+        self._row3Keys = [self._calibX(x) for x in self._row3Keys]
         self._row3Letters = ['\n',"'",';','l','k','j','h','g','f','d','s',"a",'C']
         self._row3Uppers = ['\n','"',':']
-        self._row4Keys = [635,585,535,485,435,385,335,285,235,185,135,-99999]
+        #self._row4Keys = [635,585,535,485,435,385,335,285,235,185,135,-99999]
+        #self._row4Keys = [565,520,475,430,385,340,295,250,205,160,115,-99999]
+        self._row4Keys = [790,727,664,602,539,476,413,351,288,225,162,-99999]
+        self._row4Keys = [self._calibX(x) for x in self._row4Keys]
         self._row4Letters = ['S','/','.',',','m','n','b','v','c','x','z','S']
         self._row4Uppers = ['S','?','>','<']
-        self._row5Keys = [710,520,220,125,-99999]
+        #self._row5Keys = [710,520,220,125,-99999]
+        #self._row5Keys = [640,460,200,110,-99999]
+        self._row5Keys = [880,650,280,155,-99999]
+        self._row5Keys = [self._calibX(x) for x in self._row5Keys]
         self._row5Letters = ['X','',' ','','\x1b']
 
-        ts_calib = getenv('PYDOS_TS_CALIB')
-        try:
-            ts_calib = eval(ts_calib)
-            self._calibrated = True
-        except:
-            ts_calib = self.calibrate()
-        if len(ts_calib) != 4:
-            ts_calib = self.calibrate()
-        self._calibXfact = self._display.width/(ts_calib[2]-ts_calib[0]+1)
-        self._calibXadj = ts_calib[0]
-        self._calibYfact = self._display.height/(ts_calib[3]-ts_calib[1]+1)
-        self._calibYadj = ts_calib[1]
+    _calibX = lambda self,x: round(x*self._calibXfact) + self._calibXadj
+    _calibY = lambda self,y: round(y*self._calibYfact) + self._calibYadj
+    _calibKB = lambda self,y: round(y*self._calibKBfact) + self._calibKBadj
 
     def calibrate(self):
 
@@ -211,7 +233,6 @@ class PyDOS_UI:
             envfile.write('PYDOS_TS_CALIB="(%s,%s,%s,%s)"'%(smallest_X,smallest_Y,largest_X,largest_Y))
 
         self._display.root_group=displayio.CIRCUITPYTHON_TERMINAL
-        self._calibrated = True
         print("Screen Calibrated: (%s,%s) (%s,%s)" % (smallest_X,smallest_Y,largest_X,largest_Y))
         return (smallest_X,smallest_Y,largest_X,largest_Y)
 
@@ -251,15 +272,16 @@ class PyDOS_UI:
         return (round(self._display.height*.04),round(self._display.width*.0817))
 
     def _identifyLocation(self,xloc,yloc):
-        if yloc < self._kbd_row+11:
+        kbd_row = self._calibKB(self._kbd_row)
+        if yloc < kbd_row+self._calibY(11):
             retKey = ""
-        elif yloc > self._kbd_row+203:    # 435
+        elif yloc > kbd_row+self._calibY(255):    # 435
             retKey = self._row5Letters[next(a[0] for a in enumerate(self._row5Keys) if a[1]<=xloc)]
-        elif yloc >= self._kbd_row+148:   # 390
+        elif yloc >= kbd_row+self._calibY(197):   # 390
             retKey = self._row4Letters[next(a[0] for a in enumerate(self._row4Keys) if a[1]<=xloc)]
-        elif yloc >= self._kbd_row+103:   # 345
+        elif yloc >= kbd_row+self._calibY(132):   # 345
             retKey = self._row3Letters[next(a[0] for a in enumerate(self._row3Keys) if a[1]<=xloc)]
-        elif yloc >= self._kbd_row+57:    # 300
+        elif yloc >= kbd_row+self._calibY(75):    # 300
             retKey = self._row2Letters[next(a[0] for a in enumerate(self._row2Keys) if a[1]<=xloc)]
         else:                            # 255
             retKey = self._row1Letters[next(a[0] for a in enumerate(self._row1Keys) if a[1]<=xloc)]
@@ -302,11 +324,6 @@ class PyDOS_UI:
         if self.ts.touched:
             self.touches = self.ts.touches
             if self.touches != []:
-                if self._calibrated:
-                    for point in self.touches:
-                        point['x'] = round(point['x']*self._calibXfact) - self._calibXadj
-                        point['y'] = round(point['y']*self._calibYfact) - self._calibYadj
-
                 return True
 
         if not self._touched:
