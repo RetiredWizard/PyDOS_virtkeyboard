@@ -7,6 +7,7 @@ import dotclockframebuffer
 import framebufferio
 import adafruit_imageload
 import terminalio
+import vectorio
 from adafruit_display_text import bitmap_label as label
 import busio
 import time
@@ -26,8 +27,8 @@ class PyDOS_UI:
         # Setup Touch detection
         SCL_pin = board.SCL
         SDA_pin = board.SDA
-        if 'TOUCH_RES' in dir(board):
-            RES_pin = digitalio.DigitalInOut(board.TOUCH_RES)
+        if 'TOUCH_RESET' in dir(board):
+            RES_pin = digitalio.DigitalInOut(board.TOUCH_RESET)
         else:
             RES_pin = None
 
@@ -39,7 +40,10 @@ class PyDOS_UI:
         #else:
         #    IRQ_PIN = None
 
-        self.i2c = busio.I2C(SCL_pin, SDA_pin)
+        if 'I2C' in dir(board):
+            self.i2c = board.I2C()
+        else:
+            self.i2c = busio.I2C(SCL_pin, SDA_pin)
         if RES_pin is not None:
             self.ts = Touch_Screen(self.i2c, RES_pin, debug=False)
         else:
@@ -155,20 +159,16 @@ class PyDOS_UI:
         calibCount.y = 200
         calibCount.scale = 4
 
-        block = displayio.Shape(10,10)
-        pal = displayio.Palette(2)
+        pal = displayio.Palette(1)
         pal[0] = 0xFFFFFF
-        pal[1] = 0xFFFFFF
-        for y in range(10):
-            block.set_boundary(y,0,9)
-        block_tile = displayio.TileGrid(block,pixel_shader=pal)
-        block_tile.x = 0
-        block_tile.y = 0
+        block = vectorio.Rectangle(pixel_shader=pal, width=10, height=10, x=0, y=0)
+        block.x = 0
+        block.y = 0
 
         calib_scr = displayio.Group()
         calib_scr.append(calibTxt1)
         calib_scr.append(calibTxt2)
-        calib_scr.append(block_tile)
+        calib_scr.append(block)
         calib_scr.append(calibCount)
 
         self._display.root_group = calib_scr
@@ -189,8 +189,8 @@ class PyDOS_UI:
         smallest_X -= 5
         smallest_Y -= 5
 
-        block_tile.x = self._display.width - 10
-        block_tile.y = self._display.height - 10
+        block.x = self._display.width - 10
+        block.y = self._display.height - 10
 
         count = 5
         calibCount.text=str(count)
