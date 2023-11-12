@@ -3,7 +3,6 @@ from os import getenv
 
 import board
 import displayio
-import dotclockframebuffer
 import framebufferio
 import adafruit_imageload
 import terminalio
@@ -14,9 +13,17 @@ import time
 from supervisor import runtime
 
 if board.board_id == "makerfabs_tft7":
+    import dotclockframebuffer
     from gt911_touch import GT911_Touch as Touch_Screen
 elif board.board_id == "espressif_esp32s3_devkitc_1_n8r8_hacktablet":
+    import dotclockframebuffer
     from adafruit_focaltouch import Adafruit_FocalTouch as Touch_Screen
+else:
+    try:
+        import adafruit_ili9341
+        from adafruit_tsc2007 import TSC2007 as Touch_Screen
+    except:
+        raise RuntimeError("Unknown/Unsupported Touchscreen")
 
 import digitalio
 from microcontroller import pin
@@ -41,37 +48,53 @@ class PyDOS_UI:
         #    IRQ_PIN = None
 
         if 'I2C' in dir(board):
-            self.i2c = board.I2C()
+            i2c = board.I2C()
         else:
-            self.i2c = busio.I2C(SCL_pin, SDA_pin)
+            i2c = busio.I2C(SCL_pin, SDA_pin)
         if RES_pin is not None:
-            self.ts = Touch_Screen(self.i2c, RES_pin, debug=False)
+            self.ts = Touch_Screen(i2c, RES_pin, debug=False)
         else:
-            self.ts = Touch_Screen(self.i2c, debug=False)
+            try:
+                self.ts = Touch_Screen(i2c, debug=False)
+            except:
+                self.ts = Touch_Screen(i2c)
         self.touches = []
         self._touched = False
 
         self.SHIFTED = False
         self.CAPLOCK = False
 
+# Adafruit 2.4" TFT FeatherWing using TSC2007 touch Y dimension is reversed
+        self._swapYdir = False
+
         displayio.release_displays()
 
-        fb=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
-        self._display=framebufferio.FramebufferDisplay(fb)
+        if 'TFT_PINS' in dir(board):
+            disp_bus=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
+            self._display=framebufferio.FramebufferDisplay(disp_bus)
+        else:
+            if 'SPI' in dir(board):
+                spi = board.SPI()
+            else:
+                spi = busio.SPI(clock=board.SCK,MOSI=board.MOSI,MISO=board.MISO)
+            disp_bus=displayio.FourWire(spi,command=board.D10,chip_select=board.D9, \
+                reset=board.D6)
+            self._display=adafruit_ili9341.ILI9341(disp_bus,width=320,height=240)
+            self._swapYdir = True  # TSC2007
 
         ts_calib = getenv('PYDOS_TS_CALIB')
         try:
-            ts_calib = eval(ts_calib)
+            self._ts_calib = eval(ts_calib)
         except:
-            ts_calib = self.calibrate()
-        if len(ts_calib) != 4:
-            ts_calib = self.calibrate()
-        self._calibXfact = (ts_calib[2]-ts_calib[0]+1)/1024
-        self._calibXadj = ts_calib[0] - 1
-        self._calibYfact = (ts_calib[3]-ts_calib[1]+1)/600
-        self._calibYadj = ts_calib[1] - 1
-        self._calibKBfact = (ts_calib[3]-ts_calib[1]+1)/self._display.height
-        self._calibKBadj = ts_calib[1] - 1
+            self._ts_calib = self.calibrate()
+        if len(self._ts_calib) != 4:
+            self._ts_calib = self.calibrate()
+        self._calibXfact = (self._ts_calib[2]-self._ts_calib[0]+1)/1024
+        self._calibXadj = self._ts_calib[0] - 1
+        self._calibYfact = (self._ts_calib[3]-self._ts_calib[1]+1)/600
+        self._calibYadj = self._ts_calib[1] - 1
+        self._calibKBfact = (self._ts_calib[3]-self._ts_calib[1]+1)/self._display.height
+        self._calibKBadj = self._ts_calib[1] - 1
         scrCalibX = self._display.width/1024
         scrCalibY = self._display.height/600
 
@@ -82,6 +105,8 @@ class PyDOS_UI:
         htile=displayio.TileGrid(keyboard_bitmap,pixel_shader=keyboard_palette)
         htile.x=round(scrCalibX*20)
         htile.y=self._kbd_row
+        if self._swapYdir:
+            htile.y += 30
         self._kbd_group = displayio.Group()
         self._kbd_group.append(htile)
 
@@ -105,8 +130,8 @@ class PyDOS_UI:
         self._kbd_group.append(self._capsIndicator)
 
         #self._row1Keys = [665,615,565,515,465,415,365,315,265,215,165,115,68,-99999]
-        #self._row1Keys = [600,555,510,465,420,375,330,285,240,195,150,105,60,0,-99999]
-        self._row1Keys = [843,780,718,655,593,530,467,404,342,279,216,154,92,0,-99999]
+        #self._row1Keys = [600,555,510,465,420,375,330,285,240,195,150,105,60,-99999]
+        self._row1Keys = [843,780,718,655,593,530,467,404,342,279,216,154,92,-99999]
         self._row1Keys = [self._calibX(x) for x in self._row1Keys]
         self._row1Letters = ['\x08','=','-','0','9','8','7','6','5','4','3','2','1','`']
         self._row1Uppers = ['\x08','+','_',')','(','*','&','^','%','$','#','@','!','~']
@@ -139,6 +164,8 @@ class PyDOS_UI:
     _calibKB = lambda self,y: round(y*self._calibKBfact) + self._calibKBadj
 
     def calibrate(self):
+
+        self._ts_calib = []
 
         while self.virt_touched():
             pass
@@ -175,19 +202,25 @@ class PyDOS_UI:
 
         smallest_X = self._display.width
         smallest_Y = self._display.height
+        largest_X = 1
+        largest_Y = 1
+
         while count > 0:
             if self.virt_touched():
                 point = self.touches[0]
                 smallest_X = min(smallest_X,point["x"])
-                smallest_Y = min(smallest_Y,point["y"])
+                if self._swapYdir:
+                    largest_Y = max(largest_Y,point["y"])
+                else:
+                    smallest_Y = min(smallest_Y,point["y"])
                 count -= 1
                 calibCount.text=str(count)
 
                 while self.virt_touched():
                     pass
 
-        smallest_X -= 5
-        smallest_Y -= 5
+        #smallest_X -= 5
+        #smallest_Y -= 5
 
         block.x = self._display.width - 10
         block.y = self._display.height - 10
@@ -195,21 +228,23 @@ class PyDOS_UI:
         count = 5
         calibCount.text=str(count)
 
-        largest_X = 1
-        largest_Y = 1
         while count > 0:
             if self.virt_touched():
                 point = self.touches[0]
                 largest_X = max(largest_X,point["x"])
-                largest_Y = max(largest_Y,point["y"])
+                if self._swapYdir:
+                    smallest_Y = min(smallest_Y,point["y"])
+                else:
+                    largest_Y = max(largest_Y,point["y"])
                 count -= 1
                 calibCount.text=str(count)
 
                 while self.virt_touched():
                     pass
 
-        largest_X += 5
-        largest_Y += 5
+
+        #largest_X += 5
+        #largest_Y += 5
 
         envline = {}
         defaults = True
@@ -256,8 +291,10 @@ class PyDOS_UI:
 
 
     def read_keyboard(self,num):
-        if self.virt_touched() or self._touched:
-            if self.touches[0]['x'] > self._display.width*.925 and self.touches[0]['y'] < 85:
+        if not self._touched:
+            self._touched = self.virt_touched()
+        if self._touched:
+            if self.touches[0]['x'] > self._calibX(self._display.width*.925) and self.touches[0]['y'] < self._calibY(85):
                 retVal = '\n'
             else:
                 retVal = self.read_virtKeyboard(num)
@@ -269,11 +306,17 @@ class PyDOS_UI:
         return retVal
     
     def get_screensize(self):
-        return (round(self._display.height*.04),round(self._display.width*.0817))
+        #return (round(self._display.height*.04),round(self._display.width*.0817))
+        return (
+            round(self._display.height/(terminalio.FONT.bitmap.height*displayio.CIRCUITPYTHON_TERMINAL.scale))-1,
+            round(self._display.width/((terminalio.FONT.bitmap.width/95)*displayio.CIRCUITPYTHON_TERMINAL.scale))-1
+        )
 
     def _identifyLocation(self,xloc,yloc):
         kbd_row = self._calibKB(self._kbd_row)
-        if yloc < kbd_row+self._calibY(11):
+        if xloc > self._calibX(self._display.width*.925) and yloc < self._calibY(85):
+            retKey = "\n"
+        elif yloc < kbd_row+self._calibY(11):
             retKey = ""
         elif yloc > kbd_row+self._calibY(255):    # 435
             retKey = self._row5Letters[next(a[0] for a in enumerate(self._row5Keys) if a[1]<=xloc)]
@@ -322,7 +365,28 @@ class PyDOS_UI:
     
     def virt_touched(self):
         if self.ts.touched:
-            self.touches = self.ts.touches
+            if "touches" in dir(self.ts):
+                self.touches = self.ts.touches
+            else:
+                self.touches = [self.ts.touch]
+                if self.touches[0]["pressure"] >= 75:
+                    if len(self._ts_calib) == 4:
+                        transformedTouch = [{
+                            'x': self.touches[0]["y"],
+                            'y': (self._ts_calib[3]-self.touches[0]["x"]) + self._ts_calib[1],
+                            'pressure': self.touches[0]["pressure"]
+                        }]
+                    else:
+                        transformedTouch = [{
+                            'x': self.touches[0]["y"],
+                            'y': self.touches[0]["x"],
+                            'pressure': self.touches[0]["pressure"]
+                        }]
+                    self.touches = transformedTouch
+                    self._touched = True
+                else:
+                    self.touches = []
+                    self._touched = False
             if self.touches != []:
                 return True
 
@@ -405,7 +469,8 @@ def input(disp_text=None):
             if done:
                 break
         elif Pydos_ui.virt_touched():
-            if Pydos_ui.touches[0]['x'] > 740 and Pydos_ui.touches[0]['y'] < 75:
+            if Pydos_ui.touches[0]['x'] > Pydos_ui._calibX(Pydos_ui._display.width*.925) and \
+                Pydos_ui.touches[0]['y'] < Pydos_ui._calibY(85):
                 keys = ''
             else:
                 keys = Pydos_ui.read_virtKeyboard()

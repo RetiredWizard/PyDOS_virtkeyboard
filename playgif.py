@@ -35,21 +35,37 @@ matrix = rgbmatrix.RGBMatrix(
 display = framebufferio.FramebufferDisplay(matrix)
 """
 
-if '_display' not in dir(Pydos_ui):
-    import framebufferio
-    import dotclockframebuffer
+if '_display' not in dir(Pydos_ui) and 'DISPLAY' not in dir(board):
+    try:
+        import framebufferio
+        import dotclockframebuffer
+    except:
+        import adafruit_ili9341
 
     displayio.release_displays()
 
-    fb=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
-    display = framebufferio.FramebufferDisplay(fb)
+    try:
+        fb=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
+        display = framebufferio.FramebufferDisplay(fb)
+    except:
+        spi = board.SPI()
+        disp_bus=displayio.FourWire(spi,command=board.D10,chip_select=board.D9, \
+            reset=board.D6)
+        display=adafruit_ili9341.ILI9341(disp_bus,width=320,height=240)
+
 else:
-    display = Pydos_ui._display
+    try:
+        display = Pydos_ui._display
+    except:
+        display = board.DISPLAY
 
 splash = displayio.Group()
 
 fname = input("Enter filename:")
-while Pydos_ui.virt_touched():
+try:
+    while Pydos_ui.virt_touched():
+        pass
+except:
     pass
 input('Press "Enter" to continue, press "q" to quit')
 
@@ -81,12 +97,9 @@ while cmnd.upper() != "Q":
             break
     display.root_group=splash
     #time.sleep(max(0, next_delay - overhead))
-    time.sleep(0.3)
+    time.sleep(0.1)
     next_delay = odgcc.next_frame()
 #    next_delay = odgp.next_frame()
 
 splash.pop()
-try:
-    board.DISPLAY.root_group = displayio.CIRCUITPYTHON_TERMINAL
-except:
-    display.root_group = displayio.CIRCUITPYTHON_TERMINAL
+display.root_group = displayio.CIRCUITPYTHON_TERMINAL

@@ -1,26 +1,34 @@
 import board
 from adafruit_turtle import Color, turtle
+import displayio
+
 try:
     from pydos_ui import input
 except:
     pass
 
-import framebufferio
-import dotclockframebuffer
-import displayio
+if 'DISPLAY' not in dir(board):
+    try:
+        import framebufferio
+        import dotclockframebuffer
+    except:
+        import adafruit_ili9341
 
-displayio.release_displays()
+    displayio.release_displays()
 
-fb=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
-display = framebufferio.FramebufferDisplay(fb)
+    try:
+        fb=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
+        display = framebufferio.FramebufferDisplay(fb)
+    except:
+        spi = board.SPI()
+        disp_bus=displayio.FourWire(spi,command=board.D10,chip_select=board.D9, \
+            reset=board.D6)
+        display=adafruit_ili9341.ILI9341(disp_bus,width=320,height=240)
+else:
+    display = board.DISPLAY
 
-
-try:
-	turtle = turtle(board.DISPLAY)
-	benzsize = min(board.DISPLAY.width, board.DISPLAY.height) * 0.5
-except:
-	turtle = turtle(display)
-	benzsize = min(display.width, display.height) * 0.5
+turtle = turtle(display)
+benzsize = min(display.width, display.height) * 0.5
 
 print("Turtle time! Lets draw a rainbow benzene")
 
