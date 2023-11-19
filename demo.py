@@ -33,30 +33,34 @@
 import time
 import busio
 import board
-#import adafruit_focaltouch
+try:
+    import adafruit_focaltouch
+except:
+    pass
 import displayio
 import dotclockframebuffer
 import framebufferio
 import terminalio
 from rainbowio import colorwheel
 import adafruit_imageload
-from pydos_ui import Pydos_ui
+try:
+    from pydos_ui import Pydos_ui
+except:
+    Pydos_ui = None
 
 
-#SCL_pin = board.IO41  # set to a pin that you want to use for SCL
-#SDA_pin = board.IO42  # set to a pin that you want to use for SDA
+if 'ts' in dir(Pydos_ui):
+    ft = Pydos_ui.ts
+else:
 
-#IRQ_pin = board.IO40  # select a pin to connect to the display's interrupt pin ("IRQ") - not used in this code
+    SCL_pin = board.SCL  # set to a pin that you want to use for SCL
+    SDA_pin = board.SDA  # set to a pin that you want to use for SDA
 
+    IRQ_pin = board.TOUCH_INT  # select a pin to connect to the display's interrupt pin ("IRQ") - not used in this code
 
-#i2c = busio.I2C(SCL_pin, SDA_pin)
+    i2c = busio.I2C(SCL_pin, SDA_pin)
 
-
-#ft = adafruit_focaltouch.Adafruit_FocalTouch(i2c, debug=False)
-ft = Pydos_ui.ts
-
-displayio.release_displays()
-
+    ft = adafruit_focaltouch.Adafruit_FocalTouch(i2c, debug=False)
 
 # load the background "HACKtablet" image
 
@@ -65,7 +69,6 @@ hack_bitmap, hack_palette = adafruit_imageload.load("HACKtablet.bmp", bitmap=dis
 hack_tilegrid = displayio.TileGrid(hack_bitmap, 
                     pixel_shader=hack_palette,
                     )
-
 
 # setup the display
 
@@ -76,34 +79,37 @@ hack_tilegrid = displayio.TileGrid(hack_bitmap,
 # happens/  It may cause glitching depending upon what
 # settings you use.
 
-print('Creating DotClockFrameBuffer.')
+if 'display' in dir(Pydos_ui):
+    display = Pydos_ui.display
+else:
+    print('Creating DotClockFrameBuffer.')
 
+    #fb=dotclockdisplay.DotClockFramebuffer(
+    #    width=800, height=480, 
+    #    hsync=board.IO47, vsync=board.IO48,
+    #    de=board.IO45,
+    #    pclock=board.IO21,
+    #    data_pins=datapin_list,
+    #    pclock_frequency= 24*1000*1000, # 24000000 # 24 MHz
+    #    hsync_back_porch = 100, # 100
+    #    hsync_front_porch = 40, # 40
+    #    hsync_pulse_width = 5,  # 5
+    #    vsync_back_porch = 25,  # 25
+    #    vsync_front_porch = 10, # 10
+    #    vsync_pulse_width = 1,  # 1
+    #    pclock_active_neg = 1,  # 1
+    #    bounce_buffer_size_px = 1000 * 15, # 15000
+    #    )
 
-#fb=dotclockdisplay.DotClockFramebuffer(
-#    width=800, height=480, 
-#    hsync=board.IO47, vsync=board.IO48,
-#    de=board.IO45,
-#    pclock=board.IO21,
-#    data_pins=datapin_list,
-#    pclock_frequency= 24*1000*1000, # 24000000 # 24 MHz
-#    hsync_back_porch = 100, # 100
-#    hsync_front_porch = 40, # 40
-#    hsync_pulse_width = 5,  # 5
-#    vsync_back_porch = 25,  # 25
-#    vsync_front_porch = 10, # 10
-#    vsync_pulse_width = 1,  # 1
-#    pclock_active_neg = 1,  # 1
-#    bounce_buffer_size_px = 1000 * 15, # 15000
-#    )
+    displayio.release_displays()
 
-fb=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
+    fb=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
 
+    print('Creating DotClockFrameBuffer Display.')
 
-print('Creating DotClockFrameBuffer Display.')
-
-display=framebufferio.FramebufferDisplay(fb)
-#        force_refresh=True,
-#        )
+    display=framebufferio.FramebufferDisplay(fb)
+    #        force_refresh=True,
+    #        )
 
 display.root_group = None
 display.refresh()
