@@ -59,6 +59,8 @@ class PyDOS_UI:
                 self.ts = Touch_Screen(i2c, debug=False)
             except:
                 self.ts = Touch_Screen(i2c)
+
+        self.commandHistory = [""]
         self.touches = []
         self._touched = False
 
@@ -74,7 +76,7 @@ class PyDOS_UI:
             sWdth = getenv('PYDOS_TS_WIDTH')
             if sWdth == None:
                 if board.board_id == "makerfabs_tft7":
-                    sWdth = input("What is the resolution Width of the touch screen? (1024/800/...): ")
+                    sWdth = int(input("What is the resolution Width of the touch screen? (1024/800/...): "))
                 else:
                     sWdth = board.TFT_TIMINGS['width']
                 self.updateTOML("PYDOS_TS_WIDTH",str(sWdth))
@@ -141,25 +143,25 @@ class PyDOS_UI:
         self._capsIndicator.scale = 2
         self._kbd_group.append(self._capsIndicator)
 
-        self._row1Keys = [843,780,718,655,593,530,467,404,342,279,216,154,92,-99999]
+        self._row1Keys = [980,843,780,718,655,593,530,467,404,342,279,216,154,92,-99999]
         self._row1Keys = [self._calibX(x) for x in self._row1Keys]
-        self._row1Letters = ['\x08','=','-','0','9','8','7','6','5','4','3','2','1','`']
-        self._row1Uppers = ['\x08','+','_',')','(','*','&','^','%','$','#','@','!','~']
+        self._row1Letters = ['D','\x08','=','-','0','9','8','7','6','5','4','3','2','1','`']
+        self._row1Uppers = ['\x04','\x08','+','_',')','(','*','&','^','%','$','#','@','!','~']
         self._row2Keys = [880,818,755,692,629,567,504,441,378,316,253,190,127,-99999]
         self._row2Keys = [self._calibX(x) for x in self._row2Keys]
         self._row2Letters = ['\\',']','[','p','o','i','u','y','t','r','e','w','q','\x09']
         self._row2Uppers = ['|','}','{']
-        self._row3Keys = [825,763,700,637,574,511,448,385,323,260,197,134,-99999]
+        self._row3Keys = [980,825,763,700,637,574,511,448,385,323,260,197,134,-99999]
         self._row3Keys = [self._calibX(x) for x in self._row3Keys]
-        self._row3Letters = ['\n',"'",';','l','k','j','h','g','f','d','s',"a",'C']
-        self._row3Uppers = ['\n','"',':']
+        self._row3Letters = ['A','\n',"'",';','l','k','j','h','g','f','d','s',"a",'L']
+        self._row3Uppers = ['\x01','\n','"',':']
         self._row4Keys = [790,727,664,602,539,476,413,351,288,225,162,-99999]
         self._row4Keys = [self._calibX(x) for x in self._row4Keys]
         self._row4Letters = ['S','/','.',',','m','n','b','v','c','x','z','S']
         self._row4Uppers = ['S','?','>','<']
-        self._row5Keys = [880,650,280,155,-99999]
+        self._row5Keys = [980,880,650,280,155,-99999]
         self._row5Keys = [self._calibX(x) for x in self._row5Keys]
-        self._row5Letters = ['X','',' ','','\x1b']
+        self._row5Letters = ['B','X','',' ','','\x1b']
 
     _calibX = lambda self,x: round(x*self._calibXfact) + self._calibXadj
     _calibY = lambda self,y: round(y*self._calibYfact) + self._calibYadj
@@ -288,40 +290,6 @@ class PyDOS_UI:
         print("Screen Calibrated: (%s,%s) (%s,%s)" % (smallest_X,smallest_Y,largest_X,largest_Y))
         return (smallest_X,smallest_Y,largest_X,largest_Y)
 
-    def serial_bytes_available(self):
-        self._touched = False
-        if self.virt_touched():
-            retval = 1
-            self._touched = True
-        else:        
-            # Does the same function as supervisor.runtime.serial_bytes_available
-            retval = runtime.serial_bytes_available
-
-        return retval
-
-
-    def uart_bytes_available(self):
-        # Does the same function as supervisor.runtime.serial_bytes_available
-        retval = runtime.serial_bytes_available
-
-        return retval
-
-
-    def read_keyboard(self,num):
-        if not self._touched:
-            self._touched = self.virt_touched()
-        if self._touched:
-            if self.touches[0]['x'] > self._calibX(self.display.width*.925) and self.touches[0]['y'] < self._calibY(85):
-                retVal = '\n'
-            else:
-                retVal = self.read_virtKeyboard(num)
-                if retVal == "":
-                    retVal = '\n'
-        else:
-            retVal = stdin.read(num)
-
-        return retVal
-    
     def get_screensize(self):
         return (
             round(self.display.height/(terminalio.FONT.bitmap.height*displayio.CIRCUITPYTHON_TERMINAL.scale))-1,
@@ -330,10 +298,13 @@ class PyDOS_UI:
 
     def _identifyLocation(self,xloc,yloc):
         kbd_row = self._calibKB(self._kbd_row)
-        if xloc > self._calibX(self.display.width*.925) and yloc < self._calibY(85):
+        if xloc > self._calibX(980) and yloc < self._calibY(85):
             retKey = "\n"
         elif yloc < kbd_row+self._calibY(11):
-            retKey = ""
+            if xloc > self._calibX(980):
+                retKey = "C"
+            else:
+                retKey = ""
         elif yloc > kbd_row+self._calibY(255):    # 435
             retKey = self._row5Letters[next(a[0] for a in enumerate(self._row5Keys) if a[1]<=xloc)]
         elif yloc >= kbd_row+self._calibY(197):   # 390
@@ -351,13 +322,12 @@ class PyDOS_UI:
             elif not self.CAPLOCK:
                 self.SHIFTED = False
             retKey = ''
-        elif retKey == 'C':
+        elif retKey == 'L':
             self.CAPLOCK = not self.CAPLOCK
             self.SHIFTED = self.CAPLOCK
             retKey = ''
-        elif retKey == 'X':
-            retKey = '\x00'
-
+        elif retKey in 'XABCD' and retKey != "":
+            retKey = '\x00\x01\x02\x03\x04'['XABCD'.find(retKey)]
 
         if self.CAPLOCK:
             self.SHIFTED = True
@@ -379,10 +349,28 @@ class PyDOS_UI:
 
         return retKey
     
+    def serial_bytes_available(self):
+        self._touched = False
+        if self.virt_touched():
+            retval = 1
+            self._touched = True
+        else:        
+            # Does the same function as supervisor.runtime.serial_bytes_available
+            retval = runtime.serial_bytes_available
+
+        return retval
+
+    def uart_bytes_available(self):
+        # Does the same function as supervisor.runtime.serial_bytes_available
+        retval = runtime.serial_bytes_available
+
+        return retval
+
     def virt_touched(self):
         if self.ts.touched:
             if "touches" in dir(self.ts):
                 self.touches = self.ts.touches
+                self._touched = True
             else:
                 self.touches = [self.ts.touch]
                 if self.touches[0]["pressure"] >= 75:
@@ -406,15 +394,44 @@ class PyDOS_UI:
             if self.touches != []:
                 return True
 
-        if not self._touched:
-            self.touches = []
+        self._touched = False
+        self.touches = []
         return False
 
-    def read_virtKeyboard(self,num=0):
-        self.display.root_group=self._kbd_group
+    def read_keyboard(self,num,holdkeyb=False,keys="",ec=None):
+        # holdkeyb = True keeps the virtual keyboard displayed between calls
+        #            Until an enter or termination key is entered in read_virtKeyboard
+        if not self._touched:
+            self._touched = self.virt_touched()
+        if self._touched:
+            if self.touches[0]['x'] > self._calibX(980) and self.touches[0]['y'] < self._calibY(85):
+                if self.display.root_group == self._kbd_group:
+                    self._keyedTxt.text = ""
+                    self.display.root_group = displayio.CIRCUITPYTHON_TERMINAL
+                retVal = '\n'
+            else:
+                retVal = self.read_virtKeyboard(num,keys,ec)
+                if not holdkeyb:
+                    self._keyedTxt.text = ""
+                    self.display.root_group = displayio.CIRCUITPYTHON_TERMINAL
+                if retVal == "":
+                    retVal = '\n'
+        else:
+            retVal = stdin.read(num)
 
-        while self.virt_touched():
-            pass
+        return retVal
+    
+    def read_virtKeyboard(self,num=0,keys="",ec=None):
+
+        loop = True
+
+        if self.display.root_group != self._kbd_group:
+            self.display.root_group=self._kbd_group
+            while self.virt_touched():
+                pass
+            self._touched = False
+            #if num == 1:
+            #    loop = False
 
         self.SHIFTED = self.CAPLOCK
         self._shftIndicator.text = ('SHIFT' if self.SHIFTED else '')
@@ -422,40 +439,56 @@ class PyDOS_UI:
 
         keyString = ""
         keysPressed = 0
-        while True:
-            if self.virt_touched():
+        while loop:
+            if not self._touched:
+                self._touched = self.virt_touched()
+            if self._touched:
                 point = self.touches[0]
-                #print(point)
                 pressedKey = self._identifyLocation(point["x"],point["y"])
                 
                 if pressedKey == '\x08':
                     keyString = keyString[:-1]
                     self._keyedTxt.text = keyString
-                    pressedKey = ''
+                    if num != 1:
+                        pressedKey = ''
                 elif pressedKey == '\n':
-                    break
+                    if num == 0:
+                        pressedKey = ''
+                    loop = False
                 elif pressedKey == '\x00':
                     keyString = ""
-                    break
+                    loop = False
+
                 keyString += pressedKey
                     
                 self._shftIndicator.text = ('SHIFT' if self.SHIFTED else '')
                 self._capsIndicator.text = ('LOCK' if self.CAPLOCK else '')
                 if len(pressedKey) != 0:
-                    self._keyedTxt.text = keyString.replace('\x1b',"E")
+                    if num != 0 and keys != "" and ec != None:
+                        txt = keys[:ec]+keyString+keys[ec:]
+                        if pressedKey == '\x08':
+                            txt = txt[:ec-1]+txt[ec:]
+                    else:
+                        txt = keyString
+
+                    for i in range(8):
+                        txt = txt.replace('\x1b\n\x00\x01\x02\x03\x04\x08'[i],"E"[i:])
+
+                    self._keyedTxt.text = txt
+
                     keysPressed += 1
                     if num > 0 and keysPressed >= num:
-                        break
+                        loop = False
                     
                 while self.virt_touched():
                     pass
+                self._touched = False
 
             time.sleep(0.0001)
 
-        #while len(self._kbd_group) > 1:
-        #    self._kbd_group.pop()
-        self._keyedTxt.text = ""
-        self.display.root_group = displayio.CIRCUITPYTHON_TERMINAL
+        if num == 0 or keyString== "" or keyString[-1:] == '\n' or keyString == '\x00':
+            self._keyedTxt.text = ""
+            self.display.root_group = displayio.CIRCUITPYTHON_TERMINAL
         return keyString
 
 Pydos_ui = PyDOS_UI()
@@ -464,35 +497,131 @@ def input(disp_text=None):
 
     if disp_text != None:
         print(disp_text,end="")
-        
-    keys = ''
-    while True:
-        if Pydos_ui.uart_bytes_available():
-            done = False
-            while Pydos_ui.uart_bytes_available():
-                keys += stdin.read(1)
-                if keys[-1] != '\x08':
-                    print(keys[-1],end="")
-                else:
-                    if len(keys) > 1:
-                        print('\x08 \x08',end="")
-                    keys = keys[:-2]
 
-                if keys[-1:] == '\n':
-                    keys = keys[:-1]
-                    done = True
-                    break
-            if done:
-                break
-        elif Pydos_ui.virt_touched():
-            if Pydos_ui.touches[0]['x'] > Pydos_ui._calibX(Pydos_ui.display.width*.925) and \
-                Pydos_ui.touches[0]['y'] < Pydos_ui._calibY(85):
-                keys = ''
+    histPntr = len(Pydos_ui.commandHistory)
+
+    keys = ''
+    editCol = 0
+    loop = True
+    arrow = ''
+    onLast = True
+    onFirst = True
+    blink = True
+    timer = time.time()
+    saved = timer-1
+
+    while loop:
+        #print(editCol,keys)
+        if arrow == 'A' or arrow == 'B':
+            if len(Pydos_ui.commandHistory) > 0:
+                print(('\x08'*(editCol))+(" "*(len(keys)+1))+('\x08'*(len(keys)+1)),end="")
+
+                if arrow == 'A':
+                    histPntr -= 1
+                else:
+                    histPntr += 1
+
+                histPntr = histPntr % len(Pydos_ui.commandHistory)
+                print(Pydos_ui.commandHistory[histPntr],end="")
+                keys = Pydos_ui.commandHistory[histPntr]
+                editCol = len(keys)
+                if editCol == 0:
+                    onFirst = True
+                else:
+                    onFirst = False
+        elif arrow == 'D':
+            if len(keys) > editCol:
+                print(keys[editCol:editCol+1]+"\x08",end="")
+            elif editCol == len(keys):
+                print(" \x08",end="")
+
+            editCol = max(0,editCol-1)
+            if editCol > 0:
+                print('\x08',end="")
+                onLast = False
+            elif editCol == 0:
+                if not onFirst:
+                    print('\x08',end="")
+                    onFirst = True
+        elif arrow == 'C':
+            if len(keys) > editCol:
+                print(keys[editCol:editCol+1]+"\x08",end="")
+
+            editCol += 1
+            editCol = min(len(keys),editCol)
+            if editCol < len(keys):
+                print(keys[editCol-1:editCol],end="")
+                onFirst = False
+            elif editCol == len(keys):
+                if not onLast:
+                    print(keys[editCol-1:],end="")
+                    onLast = True
+
+        arrow = ""
+
+        if Pydos_ui.serial_bytes_available():
+            if Pydos_ui.uart_bytes_available():
+                keys = keys[:editCol]+stdin.read(1)+keys[editCol:]
+                editCol += 1
+                if keys[editCol-1:editCol] == '\x1b':
+                    keys = keys[:editCol-1]+keys[editCol:]
+                    arrow = stdin.read(2)[1]
+                    # arrow keys = up:[A down:[B right:[C left:[D
             else:
-                keys = Pydos_ui.read_virtKeyboard()
-            print(keys)
-            while Pydos_ui.virt_touched():
-                pass
-            break
-        
+                keys = keys[:editCol]+Pydos_ui.read_keyboard(1,True,keys,editCol)+keys[editCol:]
+                editCol += 1
+                if keys[editCol-1:editCol] in '\x01\x02\x03\x04':
+                    arrow = 'ABCD'['\x01\x02\x03\x04'.find(keys[editCol-1:editCol])]
+                    keys = keys[:editCol-1]+keys[editCol:]
+
+            if arrow != "":
+                editCol -= 1
+            elif keys[editCol-1:editCol] == '\x08':
+                keys = keys[:max(0,editCol-2)]+keys[editCol:]
+                if editCol > 1:
+                    print(('\x08'*(editCol-1))+keys+'  \x08\x08',end="")
+                    editCol = max(0,editCol-2)
+                    if editCol < len(keys):
+                        print("\x08"*(len(keys)-editCol),end="")
+                else:
+                    editCol -= 1
+                    onFirst = True
+            elif keys[editCol-1:editCol] == '\x00':
+                if editCol > 1:
+                    print(('\x08'*(editCol-1))+(' '*(len(keys)+2))+('\x08'*(len(keys)+2)),end="")
+                keys = ''
+                loop = False
+            elif len(keys[editCol-1:editCol]) > 0 and keys[editCol-1:editCol] in '\n\r':
+                if len(keys) > editCol:
+                    print(keys[editCol:editCol+1]+"\x08",end="")
+                elif editCol == len(keys):
+                    print(" \x08",end="")
+                keys = keys[:editCol-1]+keys[editCol:]
+                if keys.strip() != "":
+                    Pydos_ui.commandHistory.append(keys)
+                    if len(Pydos_ui.commandHistory) > 10:
+                        Pydos_ui.commandHistory.pop(1)
+                    histPntr = len(Pydos_ui.commandHistory)
+                print()
+                loop = False
+            else:
+                onFirst = False
+                print(keys[editCol-1:],end="")
+                if len(keys[editCol-1:]) > 1:
+                    print(" \x08",end="")
+                if editCol < len(keys):
+                    print("\x08"*(len(keys)-editCol),end="")
+
+        if loop and Pydos_ui.display.root_group != displayio.CIRCUITPYTHON_TERMINAL:
+            if time.time() != timer:
+                blink = not blink
+                timer = time.time()
+
+            if timer != saved:
+                saved = timer
+                if blink:
+                    Pydos_ui._keyedTxt.text = keys[:editCol]+"_"+keys[editCol+1:]
+                else:
+                    Pydos_ui._keyedTxt.text = keys
+
     return keys

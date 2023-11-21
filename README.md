@@ -6,7 +6,7 @@
 **The PyDOS repository: https://github.com/RetiredWizard/PyDOS**
 
 Currently this requires:
-  - CircuitPython 9.x (alpha) - See [releases](https://github.com/RetiredWizard/PyDOS_virtkeyboard/releases) for firmware download
+  - CircuitPython 9.x - See https://www.circuitpython.org/downloads for firmware download
 
 The hardware currently supported uses one or more of:
   - "dot clock"/"666" display
@@ -17,7 +17,9 @@ The hardware currently supported uses one or more of:
 
 This has only been tested using the [HackTablet](https://hackaday.io/project/185831-hacktablet-crestron-tss-752-teardown-rebuild), the [MaTouch ESP32-S3 7"](https://www.makerfabs.com/index.php?route=product/product&product_id=774) and the [Adafruit TFT FeatherWing V2](https://www.adafruit.com/product/3315)
 
-The [**lib/pydos_ui_virt.py**](https://github.com/RetiredWizard/PyDOS_virtkeyboard/blob/main/lib/pydos_ui_virt.py) file performs the keyboard abstraction for PyDOS. 
+The [**lib/pydos_ui_virt.py**](https://github.com/RetiredWizard/PyDOS_virtkeyboard/blob/main/lib/pydos_ui_virt.py) file performs the keyboard abstraction for PyDOS.  
+
+Up/Down arrow, command history and line editing is supported. The Hacktablet has the arrow icons printed along the right border of the screen but for other tablets the vitual keyboard bitmap has not yet been updated.
 
 To setup the virtual keyboard in PyDOS follow the standard PyDOS installation instructions and after
 the setup.bat file has been run perform the following steps:

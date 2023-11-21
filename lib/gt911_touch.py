@@ -236,7 +236,6 @@ class GT911_Touch:
 
             i2c.write(bytes([((register & 0xFF00) >> 8),(register & 0xFF)]))
             result = bytearray(length)
-            time.sleep(.06)
 
             i2c.readinto(result)
             if self._debug:
@@ -249,6 +248,7 @@ class GT911_Touch:
             values = [((register & 0xFF00) >> 8), (register & 0xFF)] + [(v & 0xFF) for v in values]
             #print("register: %02X, value: %02X" % (values[0], values[1]))
             i2c.write(bytes(values))
+            time.sleep(.05)
 
             if self._debug:
                 print("\t$%02X <= %s" % (values[0], [hex(i) for i in values[1:]]))
