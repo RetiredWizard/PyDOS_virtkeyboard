@@ -90,8 +90,12 @@ next_delay = odgcc.next_frame() # Load the first frame
 end = time.monotonic()
 overhead = end - start
 
-facecc = displayio.TileGrid(odgcc.bitmap, \
-    pixel_shader=displayio.ColorConverter(input_colorspace=displayio.Colorspace.RGB565_SWAPPED))
+if os.getenv('PYDOS_DISPLAYIO_COLORSPACE',"").upper() == 'BGR565_SWAPPED':
+    facecc = displayio.TileGrid(odgcc.bitmap, \
+        pixel_shader=displayio.ColorConverter(input_colorspace=displayio.Colorspace.BGR565_SWAPPED))
+else:
+    facecc = displayio.TileGrid(odgcc.bitmap, \
+        pixel_shader=displayio.ColorConverter(input_colorspace=displayio.Colorspace.RGB565_SWAPPED))
 
 splash.append(facecc)
 

@@ -33,8 +33,6 @@ class PyDOS_UI:
     
     def __init__(self):
         # Setup Touch detection
-        SCL_pin = board.SCL
-        SDA_pin = board.SDA
         if 'TOUCH_RESET' in dir(board):
             RES_pin = digitalio.DigitalInOut(board.TOUCH_RESET)
         else:
@@ -51,7 +49,7 @@ class PyDOS_UI:
         if 'I2C' in dir(board):
             i2c = board.I2C()
         else:
-            i2c = busio.I2C(SCL_pin, SDA_pin)
+            i2c = busio.I2C(board.SCL, board.SDA)
         if RES_pin is not None:
             self.ts = Touch_Screen(i2c, RES_pin, debug=False)
         else:
@@ -367,7 +365,8 @@ class PyDOS_UI:
         return retval
 
     def virt_touched(self):
-        if self.ts.touched:
+        # Maximum multi-touch = 10 (focaltouch) greater values invalid==False
+        if self.ts.touched and self.ts.touched<=10:
             if "touches" in dir(self.ts):
                 self.touches = self.ts.touches
                 self._touched = True
