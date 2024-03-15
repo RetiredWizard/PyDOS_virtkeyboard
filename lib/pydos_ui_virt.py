@@ -1,4 +1,4 @@
-from sys import stdin,stdout,implementation
+from sys import stdin
 from os import getenv
 from storage import getmount
 
@@ -19,9 +19,15 @@ if board.board_id == "makerfabs_tft7":
 elif board.board_id == "espressif_esp32s3_devkitc_1_n8r8_hacktablet":
     import dotclockframebuffer
     from adafruit_focaltouch import Adafruit_FocalTouch as Touch_Screen
+elif board.board_id == "adafruit_huzzah32_breakout":
+    # Using Huzzah32 Breakout firmware for Cheap Yellow Display boards
+    import adafruit_ili9341
+    import fourwire
+    from pydos_xpt2046 import Touch as Touch_Screen
 else:
     try:
         import adafruit_ili9341
+        import fourwire
         from adafruit_tsc2007 import TSC2007 as Touch_Screen
     except:
         raise RuntimeError("Unknown/Unsupported Touchscreen")
@@ -32,6 +38,7 @@ from microcontroller import pin
 class PyDOS_UI:
     
     def __init__(self):
+        self.scrollable = False
         # Setup Touch detection
         if 'TOUCH_RESET' in dir(board):
             RES_pin = digitalio.DigitalInOut(board.TOUCH_RESET)
@@ -46,17 +53,24 @@ class PyDOS_UI:
         #else:
         #    IRQ_PIN = None
 
+        i2c = None
         if 'I2C' in dir(board):
             i2c = board.I2C()
-        else:
+        elif 'SCL' in dir(board):
             i2c = busio.I2C(board.SCL, board.SDA)
+        else:
+            ts_spi = busio.SPI(board.IO25,board.IO32,board.IO39)
+            ts_cs = board.IO33
         if RES_pin is not None:
             self.ts = Touch_Screen(i2c, RES_pin, debug=False)
         else:
-            try:
-                self.ts = Touch_Screen(i2c, debug=False)
-            except:
-                self.ts = Touch_Screen(i2c)
+            if i2c is not None:
+                try:
+                    self.ts = Touch_Screen(i2c, debug=False)
+                except:
+                    self.ts = Touch_Screen(i2c)
+            else:
+                self.ts = Touch_Screen(ts_spi,cs=ts_cs)
 
         self.commandHistory = [""]
         self.touches = []
@@ -85,14 +99,25 @@ class PyDOS_UI:
                 disp_bus=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
             self.display=framebufferio.FramebufferDisplay(disp_bus)
         else:
+            self._swapYdir = True  # TSC2007
+            if 'D10' in dir(board):
+                cmd = board.D10
+                cs = board.D9
+                rst = board.D6
+                bl = None
             if 'SPI' in dir(board):
                 spi = board.SPI()
-            else:
+            elif 'SCK' in dir(board):
                 spi = busio.SPI(clock=board.SCK,MOSI=board.MOSI,MISO=board.MISO)
-            disp_bus=displayio.FourWire(spi,command=board.D10,chip_select=board.D9, \
-                reset=board.D6)
-            self.display=adafruit_ili9341.ILI9341(disp_bus,width=320,height=240)
-            self._swapYdir = True  # TSC2007
+            else:
+                spi = busio.SPI(board.IO14,board.IO13,board.IO12)
+                cmd = board.IO2
+                cs = board.IO15
+                rst = None
+                bl = board.IO21
+                self._swapYdir = False
+            disp_bus=fourwire.FourWire(spi,command=cmd,chip_select=cs,reset=rst)
+            self.display=adafruit_ili9341.ILI9341(disp_bus,width=320,height=240,backlight_pin=bl)
 
         ts_calib = getenv('PYDOS_TS_CALIB')
         try:
