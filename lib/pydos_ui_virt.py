@@ -600,7 +600,7 @@ def input(disp_text=None):
 
             if arrow != "":
                 editCol -= 1
-            elif keys[editCol-1:editCol] == '\x08':
+            elif keys[editCol-1:editCol] in ['\x08','\x7f']:
                 keys = keys[:max(0,editCol-2)]+keys[editCol:]
                 if editCol > 1:
                     print(('\x08'*(editCol-1))+keys+'  \x08\x08',end="")
