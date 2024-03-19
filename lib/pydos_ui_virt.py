@@ -19,13 +19,15 @@ if board.board_id == "makerfabs_tft7":
 elif board.board_id == "espressif_esp32s3_devkitc_1_n8r8_hacktablet":
     import dotclockframebuffer
     from adafruit_focaltouch import Adafruit_FocalTouch as Touch_Screen
-elif board.board_id == "adafruit_huzzah32_breakout":
+elif board.board_id in ["adafruit_huzzah32_breakout","cheap_yellow_display"]:
     # Using Huzzah32 Breakout firmware for Cheap Yellow Display boards
-    import adafruit_ili9341
-    import fourwire
+    if board.board_id == 'adafruit_huzzah32_breakout':
+        import adafruit_ili9341
+        import fourwire
     from pydos_xpt2046 import Touch as Touch_Screen
 else:
     try:
+        # Featherwing TFT
         import adafruit_ili9341
         import fourwire
         from adafruit_tsc2007 import TSC2007 as Touch_Screen
@@ -54,13 +56,14 @@ class PyDOS_UI:
         #    IRQ_PIN = None
 
         i2c = None
-        if 'I2C' in dir(board):
+        if board.board_id in ["adafruit_huzzah32_breakout","cheap_yellow_display"]:
+            ts_spi = busio.SPI(board.IO25,board.IO32,board.IO39)
+            ts_cs = board.IO33
+        elif 'I2C' in dir(board):
             i2c = board.I2C()
         elif 'SCL' in dir(board):
             i2c = busio.I2C(board.SCL, board.SDA)
-        else:
-            ts_spi = busio.SPI(board.IO25,board.IO32,board.IO39)
-            ts_cs = board.IO33
+
         if RES_pin is not None:
             self.ts = Touch_Screen(i2c, RES_pin, debug=False)
         else:
@@ -82,42 +85,52 @@ class PyDOS_UI:
 # Adafruit 2.4" TFT FeatherWing using TSC2007 touch Y dimension is reversed
         self._swapYdir = False
 
-        displayio.release_displays()
+        self._dev_caladjX = 1.0
+        self._dev_caladjY = 1.0
+        if board.board_id == "espressif_esp32s3_devkitc_1_n8r8_hacktablet":
+            self._dev_caladjX = .97
+            self._dev_caladjY = 1.16
+        elif board.board_id == "makerfabs_tft7":
+            self._dev_caladjX = .96
+            self._dev_caladjY = 1.16
 
-        if 'TFT_PINS' in dir(board):
-            sWdth = getenv('PYDOS_TS_WIDTH')
-            if sWdth == None:
-                if board.board_id == "makerfabs_tft7":
-                    sWdth = int(input("What is the resolution Width of the touch screen? (1024/800/...): "))
-                else:
-                    sWdth = board.TFT_TIMINGS['width']
-                self.updateTOML("PYDOS_TS_WIDTH",str(sWdth))
-
-            if sWdth == 1024 and "TFT_TIMINGS1024" in dir(board):
-                disp_bus=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS1024)
-            else:
-                disp_bus=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
-            self.display=framebufferio.FramebufferDisplay(disp_bus)
+        if 'DISPLAY' in dir(board):
+            self.display = board.DISPLAY
         else:
-            self._swapYdir = True  # TSC2007
-            if 'D10' in dir(board):
-                cmd = board.D10
-                cs = board.D9
-                rst = board.D6
-                bl = None
-            if 'SPI' in dir(board):
-                spi = board.SPI()
-            elif 'SCK' in dir(board):
-                spi = busio.SPI(clock=board.SCK,MOSI=board.MOSI,MISO=board.MISO)
+            displayio.release_displays()
+
+            if 'TFT_PINS' in dir(board):
+                sWdth = getenv('PYDOS_TS_WIDTH')
+                if sWdth == None:
+                    if board.board_id == "makerfabs_tft7":
+                        sWdth = int(input("What is the resolution Width of the touch screen? (1024/800/...): "))
+                    else:
+                        sWdth = board.TFT_TIMINGS['width']
+                    self.updateTOML("PYDOS_TS_WIDTH",str(sWdth))
+
+                if sWdth == 1024 and "TFT_TIMINGS1024" in dir(board):
+                    disp_bus=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS1024)
+                else:
+                    disp_bus=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
+                self.display=framebufferio.FramebufferDisplay(disp_bus)
             else:
-                spi = busio.SPI(board.IO14,board.IO13,board.IO12)
-                cmd = board.IO2
-                cs = board.IO15
-                rst = None
-                bl = board.IO21
-                self._swapYdir = False
-            disp_bus=fourwire.FourWire(spi,command=cmd,chip_select=cs,reset=rst)
-            self.display=adafruit_ili9341.ILI9341(disp_bus,width=320,height=240,backlight_pin=bl)
+                if board.board_id == 'adafruit_huzzah32_breakout':
+                    spi = busio.SPI(board.IO14,board.IO13,board.IO12)
+                    cmd = board.IO2
+                    cs = board.IO15
+                    rst = None
+                    bl = board.IO21
+                else:
+                    # TFT Featherwing so microcontroller doesn't have defined display pins
+                    self._swapYdir = True  # TSC2007
+                    spi = board.SPI()
+                    cmd = board.D10
+                    cs = board.D9
+                    rst = board.D6
+                    bl = None
+
+                disp_bus=fourwire.FourWire(spi,command=cmd,chip_select=cs,reset=rst)
+                self.display=adafruit_ili9341.ILI9341(disp_bus,width=320,height=240,backlight_pin=bl)
 
         ts_calib = getenv('PYDOS_TS_CALIB')
         try:
@@ -126,69 +139,62 @@ class PyDOS_UI:
             self._ts_calib = self.calibrate()
         if len(self._ts_calib) != 4:
             self._ts_calib = self.calibrate()
-        self._calibXfact = (self._ts_calib[2]-self._ts_calib[0]+1)/1024
-        self._calibXadj = self._ts_calib[0] - 1
-        self._calibYfact = (self._ts_calib[3]-self._ts_calib[1]+1)/600
-        self._calibYadj = self._ts_calib[1] - 1
-        self._calibKBfact = (self._ts_calib[3]-self._ts_calib[1]+1)/self.display.height
-        self._calibKBadj = self._ts_calib[1] - 1
-        scrCalibX = self.display.width/1024
-        scrCalibY = self.display.height/600
 
-        self._kbd_row = self.display.height - round(scrCalibY*330)
+        calibXmin = self._ts_calib[0]-1
+        calibXrange = self._ts_calib[2]-calibXmin
+        calibYmin = self._ts_calib[1]-1
+        calibYrange = self._ts_calib[3]-calibYmin
+
+        self._tnormX = lambda x: round(1000*(x-calibXmin)/calibXrange)
+        self._tnormY = lambda y: round(1000*(y-calibYmin)/calibYrange)
+        self._scrnormY = lambda y: round(1000*y/self.display.height)
+        toscrX = lambda x: round(x*self.display.width/1000)
+        toscrY = lambda y: round(y*self.display.height/1000)
+
         keyboard_bitmap,keyboard_palette = adafruit_imageload.load \
             ("/lib/keyboard"+str(self.display.width)+".bmp", \
             bitmap=displayio.Bitmap,palette=displayio.Palette)
+        self._kbd_row = self.display.height - \
+            (keyboard_bitmap.height + toscrY(20))
+
         htile=displayio.TileGrid(keyboard_bitmap,pixel_shader=keyboard_palette)
-        htile.x=round(scrCalibX*20)
+        htile.x=toscrX(5)
         htile.y=self._kbd_row
-        if self._swapYdir:
-            htile.y += 30
         self._kbd_group = displayio.Group()
         self._kbd_group.append(htile)
 
         font = terminalio.FONT
         color = 0xFFFFFF
         self._keyedTxt = label.Label(font, text="", color=color)
-        self._keyedTxt.x = round(scrCalibX*20)
-        self._keyedTxt.y = self.display.height - round(scrCalibY*355)
+        self._keyedTxt.x = htile.x
+        self._keyedTxt.y = self._kbd_row - 15
         self._keyedTxt.scale = 2
         self._kbd_group.append(self._keyedTxt)
         
         self._shftIndicator = label.Label(font,text="",color=0x00FF00)
-        self._shftIndicator.x = round(scrCalibX*20)
-        self._shftIndicator.y = round(scrCalibY*20)
+        self._shftIndicator.x = htile.x
+        self._shftIndicator.y = 10
         self._shftIndicator.scale = 2
         self._kbd_group.append(self._shftIndicator)
         self._capsIndicator = label.Label(font,text="",color=0x00FF00)
-        self._capsIndicator.x = round(scrCalibX*105)
-        self._capsIndicator.y = round(scrCalibY*20)
+        self._capsIndicator.x = htile.x + 75
+        self._capsIndicator.y = self._shftIndicator.y
         self._capsIndicator.scale = 2
         self._kbd_group.append(self._capsIndicator)
-
-        self._row1Keys = [980,843,780,718,655,593,530,467,404,342,279,216,154,92,-99999]
-        self._row1Keys = [self._calibX(x) for x in self._row1Keys]
+        self._row1Keys = [973,850,790,724,655,592,525,457,393,323,275,195,137,70,-99999]
         self._row1Letters = ['D','\x08','=','-','0','9','8','7','6','5','4','3','2','1','`']
         self._row1Uppers = ['\x04','\x08','+','_',')','(','*','&','^','%','$','#','@','!','~']
-        self._row2Keys = [880,818,755,692,629,567,504,441,378,316,253,190,127,-99999]
-        self._row2Keys = [self._calibX(x) for x in self._row2Keys]
+        self._row2Keys = [883,823,759,689,625,555,490,424,360,290,226,163,100,-99999]
         self._row2Letters = ['\\',']','[','p','o','i','u','y','t','r','e','w','q','\x09']
         self._row2Uppers = ['|','}','{']
-        self._row3Keys = [980,825,763,700,637,574,511,448,385,323,260,197,134,-99999]
-        self._row3Keys = [self._calibX(x) for x in self._row3Keys]
+        self._row3Keys = [973,840,773,710,639,573,510,444,373,311,246,176,112,-99999]
         self._row3Letters = ['A','\n',"'",';','l','k','j','h','g','f','d','s',"a",'L']
         self._row3Uppers = ['\x01','\n','"',':']
-        self._row4Keys = [790,727,664,602,539,476,413,351,288,225,162,-99999]
-        self._row4Keys = [self._calibX(x) for x in self._row4Keys]
+        self._row4Keys = [804,739,671,607,542,476,413,343,282,210,145,-99999]
         self._row4Letters = ['S','/','.',',','m','n','b','v','c','x','z','S']
         self._row4Uppers = ['S','?','>','<']
-        self._row5Keys = [980,880,650,280,155,-99999]
-        self._row5Keys = [self._calibX(x) for x in self._row5Keys]
+        self._row5Keys = [973,911,639,268,127,-99999]
         self._row5Letters = ['B','X','',' ','','\x1b']
-
-    _calibX = lambda self,x: round(x*self._calibXfact) + self._calibXadj
-    _calibY = lambda self,y: round(y*self._calibYfact) + self._calibYadj
-    _calibKB = lambda self,y: round(y*self._calibKBfact) + self._calibKBadj
 
     def updateTOML(self,tomlvar,tomlval):
         if getmount('/').readonly:
@@ -280,9 +286,6 @@ class PyDOS_UI:
                 while self.virt_touched():
                     pass
 
-        #smallest_X -= 5
-        #smallest_Y -= 5
-
         block.x = self.display.width - 10
         block.y = self.display.height - 10
 
@@ -303,11 +306,12 @@ class PyDOS_UI:
                 while self.virt_touched():
                     pass
 
-
-        #largest_X += 5
-        #largest_Y += 5
-
         self.updateTOML('PYDOS_TS_CALIB',"(%s,%s,%s,%s)"%(smallest_X,smallest_Y,largest_X,largest_Y))
+
+        if smallest_X < 0 or smallest_Y < 0 or largest_X < 0 or largest_Y < 0:
+            raise RuntimeError("Negative calibration value")
+        if largest_X < smallest_X or largest_Y < smallest_Y:
+            raise RuntimeError("Negative calibration range")
 
         self.display.root_group=displayio.CIRCUITPYTHON_TERMINAL
         print("Screen Calibrated: (%s,%s) (%s,%s)" % (smallest_X,smallest_Y,largest_X,largest_Y))
@@ -320,24 +324,33 @@ class PyDOS_UI:
         )
 
     def _identifyLocation(self,xloc,yloc):
-        kbd_row = self._calibKB(self._kbd_row)
-        if xloc > self._calibX(980) and yloc < self._calibY(85):
+        kbd_row = self._scrnormY(self._kbd_row)
+        normX = self._tnormX(xloc)
+        normY = self._tnormY(yloc)
+        #print(normX,normY,kbd_row)
+        # 1,2333 = (259/480)/(105/240)
+        if normX > 980 and normY < 85:
             retKey = "\n"
-        elif yloc < kbd_row+self._calibY(11):
-            if xloc > self._calibX(980):
+        elif normY < kbd_row+(self._dev_caladjY*(561-542)):
+            if normX > 980:
                 retKey = "C"
             else:
                 retKey = ""
-        elif yloc > kbd_row+self._calibY(255):    # 435
-            retKey = self._row5Letters[next(a[0] for a in enumerate(self._row5Keys) if a[1]<=xloc)]
-        elif yloc >= kbd_row+self._calibY(197):   # 390
-            retKey = self._row4Letters[next(a[0] for a in enumerate(self._row4Keys) if a[1]<=xloc)]
-        elif yloc >= kbd_row+self._calibY(132):   # 345
-            retKey = self._row3Letters[next(a[0] for a in enumerate(self._row3Keys) if a[1]<=xloc)]
-        elif yloc >= kbd_row+self._calibY(75):    # 300
-            retKey = self._row2Letters[next(a[0] for a in enumerate(self._row2Keys) if a[1]<=xloc)]
-        else:                            # 255
-            retKey = self._row1Letters[next(a[0] for a in enumerate(self._row1Keys) if a[1]<=xloc)]
+        elif normY > kbd_row+(self._dev_caladjY*(904-542)):    # 904  kbd_row = 542
+            retKey = self._row5Letters[next(a[0] for a in \
+                enumerate(self._row5Keys) if (a[1]*self._dev_caladjX)<=normX)]
+        elif normY >= kbd_row+(self._dev_caladjY*(822-542)):   # 822
+            retKey = self._row4Letters[next(a[0] for a in \
+                enumerate(self._row4Keys) if (a[1]*self._dev_caladjX)<=normX)]
+        elif normY >= kbd_row+(self._dev_caladjY*(740-542)):   # 740
+            retKey = self._row3Letters[next(a[0] for a in \
+                enumerate(self._row3Keys) if (a[1]*self._dev_caladjX)<=normX)]
+        elif normY >= kbd_row+(self._dev_caladjY*(655-542)):   # 655
+            retKey = self._row2Letters[next(a[0] for a in \
+                enumerate(self._row2Keys) if (a[1]*self._dev_caladjX)<=normX)]
+        else:                        # normY >= kbd_row+10:     # 565
+            retKey = self._row1Letters[next(a[0] for a in \
+                enumerate(self._row1Keys) if (a[1]*self._dev_caladjX)<=normX)]
 
         if retKey == 'S':
             if not self.SHIFTED:
@@ -428,7 +441,9 @@ class PyDOS_UI:
         if not self._touched:
             self._touched = self.virt_touched()
         if self._touched:
-            if self.touches[0]['x'] > self._calibX(980) and self.touches[0]['y'] < self._calibY(85):
+            if self._tnormX(self.touches[0]['x']) > 980 and \
+                self._tnormY(self.touches[0]['y']) < 85:
+
                 if self.display.root_group == self._kbd_group:
                     self._keyedTxt.text = ""
                     self.display.root_group = displayio.CIRCUITPYTHON_TERMINAL
@@ -643,9 +658,13 @@ def input(disp_text=None):
 
             if timer != saved:
                 saved = timer
+                txt = keys
+                for i in range(8):
+                    txt = txt.replace('\x1b\n\x00\x01\x02\x03\x04\x08'[i],"E"[i:])
+
                 if blink:
-                    Pydos_ui._keyedTxt.text = keys[:editCol]+"_"+keys[editCol+1:]
+                    Pydos_ui._keyedTxt.text = txt[:editCol]+"_"+txt[editCol+1:]
                 else:
-                    Pydos_ui._keyedTxt.text = keys
+                    Pydos_ui._keyedTxt.text = txt
 
     return keys

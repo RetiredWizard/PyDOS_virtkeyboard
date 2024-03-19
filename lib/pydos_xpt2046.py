@@ -27,7 +27,9 @@ XPT2046 Touch module for CircuitPython
 modified from xpt2046.py of rdagger/micropython-ili9341
 https://github.com/rdagger/micropython-ili9341/blob/master/xpt2046.py
 
-remove interrupt and re-config pin for CircuitPython
+Removed interrupt and re-config pin for CircuitPython
+
+3/2024 RetiredWizard - removed normalization function (PyDOS calibration done in Pydos_ui)
 """
 from time import sleep
 import digitalio
@@ -45,13 +47,7 @@ class Touch(object):
     GET_BATTERY = const(0b10100000)  # Battery monitor
     GET_AUX = const(0b11100000)  # Auxiliary input to ADC
     
-    """ remove support of interrupt
-    def __init__(self, spi, cs, int_pin=None, int_handler=None,
-                 width=240, height=320,
-                 x_min=100, x_max=1962, y_min=100, y_max=1900):
-    """
-    def __init__(self, spi, cs, width=320, height=240,
-                 x_min=100, x_max=1962, y_min=100, y_max=1900):
+    def __init__(self, spi, cs):
         """Initialize touch screen controller.
 
         Args:
@@ -59,59 +55,24 @@ class Touch(object):
             cs (Class Pin):  Chip select pin
             int_pin (Class Pin):  Touch controller interrupt pin
             int_handler (function): Handler for screen interrupt
-            width (int): Width of LCD screen
-            height (int): Height of LCD screen
-            x_min (int): Minimum x coordinate
-            x_max (int): Maximum x coordinate
-            y_min (int): Minimum Y coordinate
-            y_max (int): Maximum Y coordinate
         """
         self.spi = spi
         self.cs = cs
-        #self.cs.init(self.cs.OUT, value=1)
         self.cs_io = digitalio.DigitalInOut(cs)
         self.cs_io.direction = digitalio.Direction.OUTPUT
         self.cs_io.value=1
         
         self.rx_buf = bytearray(3)  # Receive buffer
         self.tx_buf = bytearray(3)  # Transmit buffer
-        self.width = width
-        self.height = height
-        # Set calibration
-        self.x_min = x_min
-        self.x_max = x_max
-        self.y_min = y_min
-        self.y_max = y_max
-        self.x_multiplier = width / (x_max - x_min)
-        self.x_add = x_min * -self.x_multiplier
-        self.y_multiplier = height / (y_max - y_min)
-        self.y_add = y_min * -self.y_multiplier
 
         self._last_touch = [{"x": None, "y": None, "id": None}]
         self._last_touch = self._get_touch()
 
-        """ ignore int_pin
-        if int_pin is not None:
-            self.int_pin = int_pin
-            self.int_pin.init(int_pin.IN)
-            
-            self.int_handler = int_handler
-            self.int_locked = False
-            int_pin.irq(trigger=int_pin.IRQ_FALLING | int_pin.IRQ_RISING,
-                        handler=self.int_press)
-        """
-        
     @property
     def touched(self) -> int:
         curr_touch = self._get_touch()
         if self._last_touch != curr_touch:
             self._last_touch = curr_touch
-            """ 
-            If this extra call to _read_last_touch() 
-            isn't made then the next touch is missed ?????
-            I have no idea why 
-            """
-            #self._get_touch()
             return 1
         else:
             return 0
@@ -126,12 +87,11 @@ class Touch(object):
         nsamples = 0  # Count samples
         while timeout > 0:
             if nsamples == buf_length:
-                meanx = sum([c[0] for c in buff]) // buf_length
-                meany = sum([c[1] for c in buff]) // buf_length
-                dev = sum([(c[0] - meanx)**2 +
-                          (c[1] - meany)**2 for c in buff]) / buf_length
+                x = sum([c[0] for c in buff]) // buf_length
+                y = sum([c[1] for c in buff]) // buf_length
+                dev = sum([(c[0] - x)**2 +
+                          (c[1] - y)**2 for c in buff]) / buf_length
                 if dev <= 50:  # Deviation should be under margin of 50
-                    (y,x) = self.normalize(meanx, meany)
                     return [{"x": x, "y": y, "id": 0}]
             # get a new value
             sample = self.raw_touch()  # get a touch
@@ -155,37 +115,15 @@ class Touch(object):
         """
         return self._last_touch
 
-    """
-    def int_press(self, pin):
-        
-        if not pin.value() and not self.int_locked:
-            self.int_locked = True  # Lock Interrupt
-            buff = self.raw_touch()
-
-            if buff is not None:
-                x, y = self.normalize(*buff)
-                self.int_handler(x, y)
-            sleep(.1)  # Debounce falling edge
-        elif pin.value() and self.int_locked:
-            sleep(.1)  # Debounce rising edge
-            self.int_locked = False  # Unlock interrupt
-    """
-    
-    def normalize(self, x, y):
-        """Normalize mean X,Y values to match LCD screen."""
-        x = int(self.x_multiplier * x + self.x_add)
-        y = int(self.y_multiplier * y + self.y_add)
-        return x, y
-
     def raw_touch(self):
         """Read raw X,Y touch values.
 
         Returns:
             tuple(int, int): X, Y
         """
-        x = self.send_command(self.GET_X)
-        y = self.send_command(self.GET_Y)
-        if self.x_min <= x <= self.x_max and self.y_min <= y <= self.y_max:
+        y = self.send_command(self.GET_X)
+        x = self.send_command(self.GET_Y)
+        if 100 <= x <= 2000 and 100 <= y <= 2000:
             return (x, y)
         else:
             return None
@@ -200,14 +138,12 @@ class Touch(object):
         """
         self.tx_buf[0] = command
         
-        #self.cs(0)
         self.cs_io.value=0
         
         self.spi.try_lock()
         self.spi.write_readinto(self.tx_buf, self.rx_buf)
         self.spi.unlock()
         
-        #self.cs(1)
         self.cs_io.value=1
 
         return (self.rx_buf[1] << 4) | (self.rx_buf[2] >> 4)
