@@ -1,4 +1,4 @@
-## PyDOS_virtkeyboard - PyDOS running on a tablet?
+# PyDOS_virtkeyboard - PyDOS running on a tablet?
 
 **The modules needed to add virtual keyboard support to [PyDOS](https://github.com/RetiredWizard/PyDOS)**
 
@@ -31,9 +31,11 @@ the setup.bat file has been run perform the following steps:
 2) copy the contents of this repository to the microcontroller
 3) On the microcontroller rename /lib/pydos_ui_virt.py to /lib/pydos_ui.py
 
+## Files Not Needed By Supported Boards
+
 The following files in the /lib/ folder can be deleted (or not copied) for the indicated board
 
-Hacktablet:
+For the Hacktablet delete:
   - /lib/adafruit_ili9341.mpy
   - /lib/adafruit_tsc2007.mpy
   - /lib/gt911_touch.py
@@ -41,21 +43,21 @@ Hacktablet:
   - /lib/keyboard320.bmp
   - /lib/keyboard1024.bmp
 
-MaTouch ESP32-S3:
+for MaTouch ESP32-S3 7" delete:
   - /lib/adafruit_focaltouch.mpy
   - /lib/adafruit_ili9341.mpy
   - /lib/adafruit_tsc2007.mpy
   - /lib/pydos_xpt2046.py
   - /lib/keyboard320.bmp
 
-Adafruit TFT Featherwing:
+for Adafruit TFT Featherwing delete:
   - /lib/adafruit_focaltouch.mpy
   - /lib/gt911_touch.py
   - /lib/pydos_xpt2046.py
   - /lib/keyboard800.bmp
   - /lib/keyboard1024.bmp
 
-Cheap Yellow Display:
+for a Cheap Yellow Display delete:
   - /lib/adafruit_focaltouch.mpy
   - /lib/gt911_touch.py
   - /lib/adafruit_tsc2007.mpy
