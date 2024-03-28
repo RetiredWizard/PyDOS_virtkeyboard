@@ -589,12 +589,15 @@ def input(disp_text=None):
 
         if Pydos_ui.serial_bytes_available():
             if Pydos_ui.uart_bytes_available():
-                keys = keys[:editCol]+stdin.read(1)+keys[editCol:]
-                editCol += 1
-                if keys[editCol-1:editCol] == '\x1b':
-                    keys = keys[:editCol-1]+keys[editCol:]
-                    arrow = stdin.read(2)[1]
-                    # arrow keys = up:[A down:[B right:[C left:[D
+                try:
+                    keys = keys[:editCol]+stdin.read(1)+keys[editCol:]
+                    editCol += 1
+                    if keys[editCol-1:editCol] == '\x1b':
+                        keys = keys[:editCol-1]+keys[editCol:]
+                        arrow = stdin.read(2)[1]
+                        # arrow keys = up:[A down:[B right:[C left:[D
+                except:
+                    pass
             else:
                 keys = keys[:editCol]+Pydos_ui.read_keyboard(1,True,keys,editCol)+keys[editCol:]
                 editCol += 1
