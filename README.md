@@ -18,7 +18,7 @@ The hardware currently supported uses one or more of:
 
 As far as I know there currently is no fully functional GT911 touch library for CircuitPython or MicroPython, but the **gt911_touch.py** library included here, uses a similar API as the Adafruit FocalTech and TSC2007 libraries and seems to work well enough for the virtual keyboard to be usable. The GT911demo.py program is a simple demonstration using the library to operate the touch panel.
 
-The PyDOS virtual keyboard has only been tested using the [HackTablet](https://hackaday.io/project/185831-hacktablet-crestron-tss-752-teardown-rebuild), the [MaTouch ESP32-S3 7"](https://www.makerfabs.com/index.php?route=product/product&product_id=774), the [Adafruit TFT FeatherWing V2](https://www.adafruit.com/product/3315) and the "Cheap Yellow Display" (using "Adafruit Huzzaah32 breakout" firmwware) model [ESP32-2432S028](https://www.makerfabs.com/sunton-esp32-2-8-inch-tft-with-touch.html).
+The PyDOS virtual keyboard has only been tested using the [HackTablet](https://hackaday.io/project/185831-hacktablet-crestron-tss-752-teardown-rebuild), the [MaTouch ESP32-S3 7"](https://www.makerfabs.com/index.php?route=product/product&product_id=774), the [Adafruit TFT FeatherWing V2](https://www.adafruit.com/product/3315) and the [Sunton-ESP32-2432S028](https://www.makerfabs.com/sunton-esp32-2-8-inch-tft-with-touch.html) ("Cheap Yellow Display").
 
 The [**lib/pydos_ui_virt.py**](https://github.com/RetiredWizard/PyDOS_virtkeyboard/blob/main/lib/pydos_ui_virt.py) file performs the keyboard abstraction for PyDOS.  
 
@@ -59,6 +59,7 @@ for Adafruit TFT Featherwing delete:
 
 for a Cheap Yellow Display delete:
   - /lib/adafruit_focaltouch.mpy
+  - /lib/adafruit_ili9341.mpy
   - /lib/gt911_touch.py
   - /lib/adafruit_tsc2007.mpy
   - /lib/keyboard800.bmp

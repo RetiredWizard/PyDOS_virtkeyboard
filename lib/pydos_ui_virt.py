@@ -19,11 +19,7 @@ if board.board_id == "makerfabs_tft7":
 elif board.board_id == "espressif_esp32s3_devkitc_1_n8r8_hacktablet":
     import dotclockframebuffer
     from adafruit_focaltouch import Adafruit_FocalTouch as Touch_Screen
-elif board.board_id in ["adafruit_huzzah32_breakout","cheap_yellow_display"]:
-    # Using Huzzah32 Breakout firmware for Cheap Yellow Display boards
-    if board.board_id == 'adafruit_huzzah32_breakout':
-        import adafruit_ili9341
-        import fourwire
+elif board.board_id == "sunton_esp32_2432S028":
     from pydos_xpt2046 import Touch as Touch_Screen
 else:
     try:
@@ -56,9 +52,9 @@ class PyDOS_UI:
         #    IRQ_PIN = None
 
         i2c = None
-        if board.board_id in ["adafruit_huzzah32_breakout","cheap_yellow_display"]:
-            ts_spi = busio.SPI(board.IO25,board.IO32,board.IO39)
-            ts_cs = board.IO33
+        if board.board_id == "sunton_esp32_2432S028":
+            ts_spi = board.TOUCH_SPI()
+            ts_cs = board.TOUCH_CS
         elif 'I2C' in dir(board):
             i2c = board.I2C()
         elif 'SCL' in dir(board):
@@ -114,20 +110,13 @@ class PyDOS_UI:
                     disp_bus=dotclockframebuffer.DotClockFramebuffer(**board.TFT_PINS,**board.TFT_TIMINGS)
                 self.display=framebufferio.FramebufferDisplay(disp_bus)
             else:
-                if board.board_id == 'adafruit_huzzah32_breakout':
-                    spi = busio.SPI(board.IO14,board.IO13,board.IO12)
-                    cmd = board.IO2
-                    cs = board.IO15
-                    rst = None
-                    bl = board.IO21
-                else:
-                    # TFT Featherwing so microcontroller doesn't have defined display pins
-                    self._swapYdir = True  # TSC2007
-                    spi = board.SPI()
-                    cmd = board.D10
-                    cs = board.D9
-                    rst = board.D6
-                    bl = None
+                # TFT Featherwing so microcontroller doesn't have defined display pins
+                self._swapYdir = True  # TSC2007
+                spi = board.SPI()
+                cmd = board.D10
+                cs = board.D9
+                rst = board.D6
+                bl = None
 
                 disp_bus=fourwire.FourWire(spi,command=cmd,chip_select=cs,reset=rst)
                 self.display=adafruit_ili9341.ILI9341(disp_bus,width=320,height=240,backlight_pin=bl)
