@@ -1,5 +1,6 @@
 import board
 import gifio
+import bitmaptools
 import displayio
 import time
 from os import getenv
@@ -35,9 +36,15 @@ matrix = rgbmatrix.RGBMatrix(
 )
 display = framebufferio.FramebufferDisplay(matrix)
 """
+try:
+    type(envVars)
+except:
+    envVars = {}
 
 if 'display' in dir(Pydos_ui):
     display = Pydos_ui.display
+elif '_display' in envVars.keys():
+    display = envVars['_display']
 elif 'DISPLAY' in dir(board):
     display = board.DISPLAY
 else:
@@ -85,17 +92,29 @@ input('Press "Enter" to continue, press "q" to quit')
 
 odgcc = gifio.OnDiskGif(fname)
 
-start = time.monotonic()
-next_delay = odgcc.next_frame() # Load the first frame
-end = time.monotonic()
-overhead = end - start
+#start = time.monotonic()
+#next_delay = odgcc.next_frame() # Load the first frame
+#end = time.monotonic()
+#overhead = end - start
 
 if getenv('PYDOS_DISPLAYIO_COLORSPACE',"").upper() == 'BGR565_SWAPPED':
-    facecc = displayio.TileGrid(odgcc.bitmap, \
-        pixel_shader=displayio.ColorConverter(input_colorspace=displayio.Colorspace.BGR565_SWAPPED))
+    colorspace = displayio.Colorspace.BGR565_SWAPPED
+else:
+    colorspace = displayio.Colorspace.RGB565_SWAPPED
+
+scalefactor = display.width / odgcc.width
+if display.height/odgcc.height < scalefactor:
+    scalefactor = display.height/odgcc.height
+
+if scalefactor < 1:
+    print(f'scalefactor: {scalefactor}')
+    bitframe = displayio.Bitmap(display.width,display.height,2**odgcc.bitmap.bits_per_value)
+    bitmaptools.rotozoom(bitframe,odgcc.bitmap,scale=scalefactor)
+    facecc = displayio.TileGrid(bitframe, \
+        pixel_shader=displayio.ColorConverter(input_colorspace=colorspace))
 else:
     facecc = displayio.TileGrid(odgcc.bitmap, \
-        pixel_shader=displayio.ColorConverter(input_colorspace=displayio.Colorspace.RGB565_SWAPPED))
+        pixel_shader=displayio.ColorConverter(input_colorspace=colorspace))
 
 splash.append(facecc)
 
@@ -113,11 +132,14 @@ while cmnd.upper() != "Q":
         print(cmnd, end="", sep="")
         if cmnd in "qQ":
             break
-    display.root_group=splash
-    #time.sleep(max(0, next_delay - overhead))
-    time.sleep(0.1)
+    #display.root_group=splash
     next_delay = odgcc.next_frame()
-#    next_delay = odgp.next_frame()
+    if next_delay > 0:
+        #time.sleep(max(0, next_delay - overhead))
+        time.sleep(0.1)
+        if scalefactor < 1:
+            bitmaptools.rotozoom(bitframe,odgcc.bitmap,scale=scalefactor)
+#        next_delay = odgp.next_frame()
 
 splash.pop()
 display.root_group = displayio.CIRCUITPYTHON_TERMINAL

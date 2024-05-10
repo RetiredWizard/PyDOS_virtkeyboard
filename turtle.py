@@ -10,9 +10,15 @@ try:
     from pydos_ui import input
 except:
     pass
+try:
+    type(envVars)
+except:
+    envVars = {}
 
 if 'display' in dir(Pydos_ui):
     display = Pydos_ui.display
+elif '_display' in envVars.keys():
+    display = envVars['_display']
 elif 'DISPLAY' in dir(board):
     display = board.DISPLAY
 else:
